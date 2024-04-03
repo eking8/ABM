@@ -1312,8 +1312,8 @@ start_date = pd.to_datetime('2012-01-01')
 end_date = pd.to_datetime('2012-12-31')
 dates = pd.date_range(start_date, end_date)
 
-conflicts = pd.read_csv("Data/ACLED/1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")[
-    pd.read_csv("Data/ACLED/1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")['year']==2012]
+conflicts = pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")[
+    pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")['year']==2012]
 
 conflicts['event_date'] = pd.to_datetime(conflicts['event_date'], format="%d %B %Y")
 conflicts.sort_values(by='event_date', inplace=True)
