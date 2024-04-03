@@ -121,62 +121,8 @@ class Camp(Location):
         self.iscamp = True # by definition
         self.capacity = capacity
 
-        """
-        Select a key from the distances dictionary using roulette method,
-        where shorter distances have higher probabilities of being selected.
-        
-        :param distances: Dictionary of {key: {'distance': value}}
-        :return: Selected key based on roulette selection
-        """
-
-        if distances is None:
-            print('No routes')
-            return None
-        
-        distances = {key: value for key, value in distances.items() if value['distance'] != 0}
-            
-        
-        # Invert distances to treat smaller distances as larger for selection
-        inverted_distances = {key: 1.0 / distances[key]['distance'] for key in distances}
-        
-        # Calculate total sum of inverted distances
-        total_inverted_sum = sum(inverted_distances.values())
-
-        if total_inverted_sum == 0:
-            return None
-        
-        # Normalize inverted distances to probabilities
-        probabilities = {key: inverted_distances[key] / total_inverted_sum for key in inverted_distances}
-        
-        # Prepare for roulette wheel selection
-        cumulative_prob = 0.0
-        cumulative_probs = []
-        keys_sorted = sorted(probabilities.keys())  # Ensure consistent order
-        for key in keys_sorted:
-            cumulative_prob += probabilities[key]
-            cumulative_probs.append((cumulative_prob, key))
-        
-        # Generate a random number and select key based on cumulative probabilities
-        r = random.random()
-        for cumulative_prob, key in cumulative_probs:
-            if r <= cumulative_prob:
-                return key
-                
-        # In case of rounding errors, return the last key
-        return keys_sorted[-1]
     
 
 def total_pop(cities):
-    sum(city.population for city in cities)
+    return sum(city.population for city in cities)
 
-def city_probabilities(cities,total_population):
-    city_probabilities = {city.name: city.population / total_population for city in cities}
-    prob_values = list(city_probabilities.values())
-
-    # Normalize the probabilities
-    normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
-
-    if not np.isclose(sum(normalized_prob_values), 1.0):
-        raise ValueError("Normalized probabilities do not sum closely to 1.")
-    
-    return (city_probabilities,normalized_prob_values)

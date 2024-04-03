@@ -766,11 +766,10 @@ start_time = time.time()
 
 
 
-
-total_population = total_pop(locations)
+total_population = total_pop(cities)
 
 #########################################################################################
-frac = 10 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -791,16 +790,19 @@ normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
 if not np.isclose(sum(normalized_prob_values), 1.0):
     raise ValueError("Normalized probabilities do not sum closely to 1.")
 
-Agents = {}
-for i in list(range(1,n_agents+1)):
-    Agents[i] = Agent(i)
-
 G = create_graph(locations)
 ongoing_conflicts = []
 
 Agent.calculate_distributions()
 Agent.initialise_cities(foreign_cities)
 Agent.initialise_populations(cities,total_population)
+
+Agents = {}
+for i in list(range(1,n_agents+1)):
+    Agents[i] = Agent(i)
+
+
+
 
 populations = {camp.name: [] for camp in camps}
 
@@ -814,6 +816,7 @@ for current_date in dates:
     
     """   
     processed_agents = 0
+    
 
     print("\n")
     print(f"Simulating day: {current_date.strftime('%Y-%m-%d')}")
@@ -880,11 +883,10 @@ for i in range(0, n_camps, camps_per_figure):
         if camp_index < n_camps:  # Check to avoid index out of range
             ax = axes[j]
             camp_name = camp_names[camp_index]
-            ax.plot(dates, populations[camp_name], label=camp_name)
+            ax.plot(dates, populations[camp_name]*frac, label=camp_name) # adjusted for fraction of population
             ax.set_title(camp_name)
             ax.set_xlabel('Date')
             ax.set_ylabel('Population')
-            ax.legend()
             ax.tick_params(axis='x', rotation=45)
         else:
             axes[j].axis('off')  # Hide unused subplot

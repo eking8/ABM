@@ -1,8 +1,7 @@
 import numpy as np
 import random
 import networkx as nx
-import datetime
-from Locations import city_probabilities
+from datetime import datetime
 
 
 class Agent:
@@ -15,7 +14,15 @@ class Agent:
 
     @classmethod
     def initialise_populations(cls,cities,total_population):
-        cls.city_probabilities,cls.normalized_prob_values = city_probabilities(cities,total_population)
+
+        cls.city_probabilities = {city.name: city.population / total_population for city in cities}
+        prob_values = list(cls.city_probabilities.values())
+
+        # Normalize the probabilities
+        cls.normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
+
+        if not np.isclose(sum(cls.normalized_prob_values), 1.0):
+            raise ValueError("Normalized probabilities do not sum closely to 1.")
 
 
     @classmethod
@@ -35,11 +42,6 @@ class Agent:
         self.age = self.generate_random_age()
         self.gender = self.generate_gender()
         self.status = status
-        self.location = np.random.choice(
-            list(self.__class__.city_probabilities.keys()),
-            p=self.__class__.normalized_prob_values
-        )
-        self.shortterm = self.location  # iniitally no plan
         self.longterm = None  # Intended destination
         self.moving = False  # Is the agent currently moving to a destination
         self.threshold = np.random.uniform(0,30)  # InitiaClise the threshold here or in a separate method
@@ -48,16 +50,20 @@ class Agent:
         self.enddate=None
         self.traveltime=None
         self.nogos=[]
-        self.city_origin = self.location
         self.country_origin='Mali'
         self.is_stuck=False
         self.been_abroad=False
-        
         self.is_leader=False 
         self.in_family=False # Replace with statistical distribution
         self.fam_size=1
         self.fam=None
         self.is_leader=True
+        self.location = np.random.choice(
+            list(self.__class__.city_probabilities.keys()),
+            p=self.__class__.normalized_prob_values
+        )
+        self.city_origin = self.location
+        self.shortterm = self.location
 
         if self.in_family:
             self.fam_size=3 # Replace with statistical distribution
@@ -79,6 +85,8 @@ class Agent:
             self.speed = abs(np.random.normal(200,10))
         else:
             self.speed = abs(np.random.normal(600, 10))
+
+
         
 
     # Calculate the cumulative distribution
