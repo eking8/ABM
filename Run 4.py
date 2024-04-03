@@ -6,7 +6,7 @@ TO DO
 - Ensure for the above that the random agents are selected from not in family
 - Logic for creating families (household size distribtuons)
 - Families will share the following:
------ 'No-Go' zones
+----- 'No-Go' zones  
 ----- Slowest walking speed
 - Followers (such as children) should not follow same decision logic (if statement at start which sees if follower)
 - Consider group size distributions and begin to model stategic groups
@@ -62,11 +62,11 @@ class colors:
     WHITE = '\033[97m'
     END = '\033[0m'
 
-# store as cache to improve speed on repeated use
+# store as cache to improve speed on repeated use...
 
 geocode_cache = {}
 
-class Location:
+class Location: 
     def __init__(self, name, country="Mali"):
         self.name = name
         self.country = country
