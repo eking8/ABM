@@ -4,7 +4,8 @@ TO DO
 
 ALPHA 5
 
-- Capacity empirically derived
+- Capacity empirically derived - No idea how to get this - assumed to be 20,000 as none of camps go above this
+
 - Logic for passing No-Go list to 1-3 random agents per node
 - Ensure for the above that the random agents are selected from not in family
 - Logic for creating families (household size distribtuons)
@@ -769,7 +770,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 10 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
