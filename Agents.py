@@ -175,14 +175,14 @@ class Agent:
     
     def merge_nogo_lists(self, all_agents):
         """
-        This method allows an agent to merge their 'nogos' list with those of 1-5 other agents in the same city.
+        This method allows an agent to merge their 'nogos' list with those of 1-3 other agents in the same city.
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
         local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
 
-        # Randomly select 1-5 agents to interact with
-        number_of_agents = random.randint(1, 5)
+        # Randomly select 1-3 agents to interact with
+        number_of_agents = random.randint(1, 3)
         selected_agents = random.sample(local_agents, min(number_of_agents, len(local_agents)))
 
         # Merge the nogo lists
