@@ -2,7 +2,7 @@
 
 TO DO
 
-ALPHA 5
+BETA 1
 
 - Capacity empirically derived - No idea how to get this - assumed to be 20,000 as none of camps go above this
 
@@ -973,8 +973,6 @@ if count_path is not None:
 for camp in camps:
     print("Camp in " + str(camp.name) + " is " + str(camp.population))
 
-for agent in ags:
-    print(agent.nogos)
 
 
 """
