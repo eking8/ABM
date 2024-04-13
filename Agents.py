@@ -187,11 +187,12 @@ class Agent:
 
         # Merge the nogo lists
         for agent in selected_agents:
-            combined_nogos = set(self.nogos).union(agent.nogos)
-            # Update each agent's nogo list
-            self.nogos = list(combined_nogos)
-            agent.nogos = list(combined_nogos)
-            
+            if selected_agents not in self.fam:
+                combined_nogos = set(self.nogos).union(agent.nogos)
+                # Update each agent's nogo list
+                self.nogos = list(combined_nogos)
+                agent.nogos = list(combined_nogos)
+                
         
         
 
