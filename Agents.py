@@ -112,7 +112,7 @@ class Agent:
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
         
-        if self.status != 'Abroad':
+        if self.location != 'Abroad':
             if city.hasconflict and city.fatalities > self.threshold:
                 self.nogos.append(city.name)
                 if self.status == 'Resident':

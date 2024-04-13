@@ -884,6 +884,7 @@ for current_date in dates:
     
     for id in Agents:
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
+        
         if Agents[id].moving:
             loc_dic[Agents[id].shortterm].addmember(id)
             loc_dic[Agents[id].location].removemember(id)
