@@ -4,17 +4,19 @@ TO DO
 
 BETA 1
 
-- Capacity empirically derived - No idea how to get this - assumed to be 20,000 as none of camps go above this
+~1hr
+- Remove capacity logic
+- Implement population as a hinderance
 
 
 ~4hr
-- self.is_leader === >logic that randomly assigns leader
-- Formation of groups
-- He-In group types (will the family travel together)
 - Families will share the following:
 ----- 'No-Go' zones  
------ Slowest walking speed
 - Followers (such as children) should not follow same decision logic (if statement at start which sees if follower)
+
+~ 2hr
+- fix bug with capital bracket distribution and family
+- capital bracket should be assigned to leader (less likely to be rich with bigger fam)
 
 ~5hr
 - Consider group size distributions and begin to model stategic groups
@@ -821,11 +823,24 @@ Agent.initialise_populations(cities,total_population)
 
 Agents = {}
 ags = []
+
+
 for i in list(range(1,n_agents+1)):
     Agents[i] = Agent(i)
     loc_dic[Agents[i].location].addmember(i)
     ags.append(Agents[i])
 
+for agent in ags:
+    agent.form_families(ags)
+
+for agent in ags: # must initialise new for loop to ensure all families initialised
+    agent.form_fam_groups()
+    
+for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
+    agent.define_groups()
+
+for agent in ags: # must initialise new group to ensure all family travelling groups initialised
+    agent.group_speeds()
 
 
 
@@ -884,13 +899,14 @@ for current_date in dates:
     
     for id in Agents:
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
-        
+
         if Agents[id].moving:
             loc_dic[Agents[id].shortterm].addmember(id)
             loc_dic[Agents[id].location].removemember(id)
             G.nodes[Agents[id].location]['population'] -= 1 # update nodes
             G.nodes[Agents[id].shortterm]['population'] += 1
-            Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
+            if not Agents[id].merged:
+                Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
 
         
 

@@ -54,7 +54,7 @@ class Agent:
         self.is_stuck=False
         self.been_abroad=False
         self.is_leader=False 
-        self.in_family=False # Replace with statistical distribution
+        self.in_family=False 
         self.fam_size=1
         self.fam=None
         self.is_leader=True
@@ -64,14 +64,65 @@ class Agent:
         )
         self.city_origin = self.location
         self.shortterm = self.location
-        self.fam=[]
+        self.fam=[] # carried by all members of the family
+        self.merged=False
+        self.travelswithfam=False
+        self.group=[] # carried by leader only
+    
 
-        if self.in_family:
-            random_poisson = np.random.poisson(6.18)
-            self.fam_size=random_poisson + np.random.normal(0,0.1) # Replace with empirical distribution
-            self.fam=[] # Assign other agents 
-            self.speed=min([x.speed for x in self.fam])
-            # self.is_leader === >logic that randomly assigns leader
+        def form_families(self,all_agents):     
+
+            self.fam.append(self)
+
+            if self.in_family == False:
+
+                if 18<self.age<65:
+
+                    self.is_leader==True
+
+                    local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
+                    available_agents = [agent for agent in local_agents if agent.in_family != True and agent.is_leader != True]
+                    
+                    random_poisson = np.random.poisson(6.18)
+                    self.fam_size=random_poisson + np.random.normal(0,0.1) - 1
+
+                    self.fam.append(random.sample(available_agents, min(self.fam_size, len(available_agents))))
+                    
+
+
+                    for agent in self.fam:
+                        agent.fam=self.fam
+
+            
+                
+        def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
+            # prob of travelling with fam / prob of being in fam = prob of travelling with fam given in fam
+            if self.in_family:
+                self.travelswithfam= random.random() < 0.596/0.98 
+            else:
+                self.travelswithfam= False
+                self.is_leader=True
+
+        def define_groups(self):
+            if self.in_family:
+                if self.is_leader:
+                    if self.travelswithfam:
+                        self.group=[x for x in self.fam if x.travelswithfam]
+                    else:
+                        max_member = max((x for x in self.fam if x.travelswithfam and x <65), key=lambda x: x.age)
+                        max_member.is_leader=True
+                        max_member.group=[x for x in self.fam if x.travelswithfam]
+            else:
+                # strategic group stuff here
+                self.group=[self]
+
+
+            
+
+        def group_speeds(self):
+        
+            self.speed = min([x.speed for x in self.group])
+
             
 
 
@@ -112,43 +163,55 @@ class Agent:
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
         
-        if self.location != 'Abroad':
-            if city.hasconflict and city.fatalities > self.threshold:
-                self.nogos.append(city.name)
-                if self.status == 'Resident':
-                        self.moving = True
-                        self.status = 'Fleeing from conflict'
-                        # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
-                        self.startdate=current_date
+    
+        if self.is_leader and not self.is_stuck:
+            self.merged = False
+
+            if self.location != 'Abroad':
+                
+                if city.hasconflict and city.fatalities > self.threshold:
+                    
+                    for agent in self.group:
+                        agent.nogos.append(city.name)
+
+                    if self.status == 'Resident':
+                            for agent in self.group:
+
+                                agent.moving = True
+                                agent.status = 'Fleeing from conflict'
+                                # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
+                                agent.startdate=current_date
 
 
-        if self.moving == True and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
-            
-            self.location = self.shortterm
+            if self.moving == True and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+                
+                self.group = [setattr(agent, 'location', agent.shortterm) for agent in self.group]
 
-            if self.location in self.__class__.foreign_cities:
-                self.status='Refugee'
-                self.been_abroad=True
-            elif self.been_abroad:
-                self.status='Returnee'
-            else:
-                self.status='IDP'
+                if self.location in self.__class__.foreign_cities:
+                    self.group = [setattr(agent, 'status', 'Refugee') for agent in self.group]
+                    self.group = [setattr(agent, 'been_abroad', True) for agent in self.group]
+                
+                elif self.been_abroad:
+                    self.group = [setattr(agent, 'status', 'Returnee') for agent in self.group]
+                else:
+                    self.group = [setattr(agent, 'status', 'IDP') for agent in self.group]
 
-            self.traveltime=current_date-self.startdate
-            
-            if self.is_leader: # followers do not decide where to go
+                self.group = [setattr(agent, 'traveltime', current_date-agent.startdate) for agent in self.group]
+                
+                
 
                 if self.location == self.longterm:
-                    self.moving = False
-                    self.enddate=current_date
-                    if self.capitalbracket=='Rich':
-                        self.location = 'Abroad'
-                        self.been_abroad=True
-
-                    # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
+                    self.group = [setattr(agent, 'moving', False) for agent in self.group]
+                    self.group = [setattr(agent, 'enddate', current_date) for agent in self.group]
                     
-                    # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
-                
+                    if self.capitalbracket=='Rich':
+                        self.group = [setattr(agent, 'location', 'Abroad') for agent in self.group]
+                        self.group = [setattr(agent, 'been_abroad', True) for agent in self.group]
+
+                        # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
+                        
+                        # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
+                    
                 else:
 
                     if self.capitalbracket == 'Rich':
@@ -159,26 +222,27 @@ class Agent:
 
                     else:
                         des_dic=camp_paths(G,self.location,self.speed,current_date,self.nogos)
-                    
+                        
                     if des_dic:
 
-                            key = self.roulette_select(des_dic)
+                        key = self.roulette_select(des_dic)
 
-                            if key:
-                                    
-                                self.distanceleft=des_dic[key]['distance']
-                                self.longterm=key
-                                self.shortterm=des_dic[key]['path'][0]
-                                # print("location = " + self.location + ", and short term = " + str(self.shortterm))
-                                # print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
-                                # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
+                        if key:
+        
+                            self.group = [setattr(agent, 'distanceleft', des_dic[key]['distance']) for agent in self.group]       
+                            self.group = [setattr(agent, 'longterm', key) for agent in self.group]       
+                            self.group = [setattr(agent, 'shortterm', des_dic[key]['path'][0]) for agent in self.group]       
+                        
+                            # print("location = " + self.location + ", and short term = " + str(self.shortterm))
+                            # print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
+                            
 
-                            else:
+                        else:
 
-                                # print("Distance too large for Agent " + str(self.id) + " to travel")
-                                self.is_stuck=True
-                                self.moving=False
-                                # LOGIC THAT ASSIGNS STUCK AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
+                            # print("Distance too large for Agent " + str(self.id) + " to travel")
+                            self.fam = [setattr(agent, 'is_stuck', True) for agent in self.fam]
+                            self.fam = [setattr(agent, 'moving', False) for agent in self.fam]
+                    
     
     def merge_nogo_lists(self, all_agents):
         """
@@ -192,9 +256,13 @@ class Agent:
         number_of_agents = random.randint(0, 3)
         selected_agents = random.sample(local_agents, min(number_of_agents, len(local_agents)))
 
+        if number_of_agents>0:
+            self.merged=True
+
         # Merge the nogo lists
         for agent in selected_agents:
             if agent in self.fam:
+                agent.merged=True
                 combined_nogos = set(self.nogos).union(agent.nogos)
                 # Update each agent's nogo list
                 self.nogos = list(combined_nogos)
