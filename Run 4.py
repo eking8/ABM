@@ -817,9 +817,11 @@ Agent.initialise_cities(foreign_cities)
 Agent.initialise_populations(cities,total_population)
 
 Agents = {}
+ags = []
 for i in list(range(1,n_agents+1)):
     Agents[i] = Agent(i)
     loc_dic[Agents[i].location].addmember(i)
+    ags.append(Agents[i])
 
 
 
@@ -883,6 +885,8 @@ for current_date in dates:
         loc_dic[Agents[id].location].removemember(id)
         G.nodes[Agents[id].location]['population'] -= 1 # update nodes
         G.nodes[Agents[id].shortterm]['population'] += 1
+
+        Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
 
         processed_agents += 1  # Update the counter after processing each agent
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)
@@ -970,6 +974,9 @@ if count_path is not None:
 
 for camp in camps:
     print("Camp in " + str(camp.name) + " is " + str(camp.population))
+
+for agent in ags:
+    print(agent.nogos)
 
 
 """

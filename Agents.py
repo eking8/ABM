@@ -111,6 +111,7 @@ class Agent:
     def assess_situation_and_move_if_needed(self,G,city,current_date):
         self.location = self.shortterm
         if city.hasconflict and city.fatalities > self.threshold:
+            self.nogos.append(city.name)
             if self.status == 'Resident':
                     self.moving = True
                     self.status = 'Fleeing from conflict'
@@ -171,6 +172,25 @@ class Agent:
                                 self.is_stuck=True
                                 self.moving=False
                                 # LOGIC THAT ASSIGNS STUCK AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
+    
+    def merge_nogo_lists(self, all_agents):
+        """
+        This method allows an agent to merge their 'nogos' list with those of 1-5 other agents in the same city.
+        :param all_agents: List of all Agent instances
+        """
+        # Filter agents in the same city and not the same agent
+        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
+
+        # Randomly select 1-5 agents to interact with
+        number_of_agents = random.randint(1, 5)
+        selected_agents = random.sample(local_agents, min(number_of_agents, len(local_agents)))
+
+        # Merge the nogo lists
+        for agent in selected_agents:
+            combined_nogos = set(self.nogos).union(agent.nogos)
+            # Update each agent's nogo list
+            self.nogos = list(combined_nogos)
+            agent.nogos = list(combined_nogos)
             
         
         
