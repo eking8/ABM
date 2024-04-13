@@ -3,7 +3,7 @@ import osmnx as ox
 from datetime import timedelta
 from functools import lru_cache
 import math
-import random
+import sys
 
 # store as cache to improve speed on repeated use...
 
@@ -16,7 +16,8 @@ class Location:
         self.latitude, self.longitude = self.geocode_location(name, country)
         self.connections = []
         self.hasconflict = False
-        self.fatalities=0 # initially 0
+        self.fatalities=0 # initially
+        self.members=[]
 
     # find lat and long of location
         
@@ -48,12 +49,7 @@ class Location:
         distance = R * c
 
         return round(distance, 1)
-    
-    def add_population(self):
-        self.population += 1
 
-    def reduce_population(self):
-        self.population -= 1
 
     # method to add connections
 
@@ -66,6 +62,19 @@ class Location:
         # check for border crossings
         crosses_border = self.country != other_location.country
         self.connections.append({'location': other_location, 'distance': distance, 'crosses_border': crosses_border})
+    
+    def addmember(self,id):
+        self.members.append(id)
+        self.population += 1
+
+    def removemember(self,id):
+        if id in self.members:
+            self.members.remove(id)
+            self.population -= 1
+        else:
+            print(str(id) + " not in " + str(self.name))
+            sys.exit(1)
+        
 
 
 
@@ -113,7 +122,7 @@ class City(Location):
 
 
 class Camp(Location):
-    def __init__(self, name, country, population=None, capacity=10000): # Need to change capacity to empirically derived
+    def __init__(self, name, country, population=None, capacity=20000): # Need to change capacity to empirically derived
         super().__init__(name, country)
         self.population = population
         self.hasairport = False # by definition

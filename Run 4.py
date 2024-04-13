@@ -6,21 +6,39 @@ ALPHA 5
 
 - Capacity empirically derived - No idea how to get this - assumed to be 20,000 as none of camps go above this
 
+~3hr
 - Logic for passing No-Go list to 1-3 random agents per node
 - Ensure for the above that the random agents are selected from not in family
+
+~4hr
 - Logic for creating families (household size distribtuons)
 - Families will share the following:
 ----- 'No-Go' zones  
 ----- Slowest walking speed
 - Followers (such as children) should not follow same decision logic (if statement at start which sees if follower)
+
+~5hr
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
-- Consider distance form conflicts as an attribute for cities (will help to model IDPs)
+
+~1hr
+- Consider next to nodes (indirect) from conflicts as an attribute for cities (will help to model IDPs)
+
+~2hr
 - "DANGER LEVELS' -> roulette function now a function of a score rather than just distance
+
+~4hr
 - Conflict fatalieis -> agent death mechanisms
 - Agent birth mechanisms
+- Empirically derive births
+
+~30min
 - Rich leaving the airport to an 'abroad' index
+
+~2hr
 - Incorporate average times at different nodes
+
+~3hr
 - Foreign conflicts
 
 SCORE BASED ON:
@@ -770,7 +788,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 1000 # TO VARY
+frac = 10000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -801,6 +819,7 @@ Agent.initialise_populations(cities,total_population)
 Agents = {}
 for i in list(range(1,n_agents+1)):
     Agents[i] = Agent(i)
+    loc_dic[Agents[i].location].addmember(i)
 
 
 
@@ -860,8 +879,8 @@ for current_date in dates:
     
     for id in Agents:
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
-        loc_dic[Agents[id].location].population -= 1 # update locations
-        loc_dic[Agents[id].shortterm].population += 1
+        loc_dic[Agents[id].shortterm].addmember(id)
+        loc_dic[Agents[id].location].removemember(id)
         G.nodes[Agents[id].location]['population'] -= 1 # update nodes
         G.nodes[Agents[id].shortterm]['population'] += 1
 
@@ -869,7 +888,8 @@ for current_date in dates:
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)
 
     for camp in camps:
-        populations[camp.name].append(camp.population)
+        pop=camp.population*frac
+        populations[camp.name].append(pop)
     
 camp_names = list(populations.keys())
 n_camps = len(camp_names)
@@ -884,7 +904,7 @@ for i in range(0, n_camps, camps_per_figure):
         if camp_index < n_camps:  # Check to avoid index out of range
             ax = axes[j]
             camp_name = camp_names[camp_index]
-            ax.plot(dates, populations[camp_name]*frac, label=camp_name) # adjusted for fraction of population
+            ax.plot(dates, populations[camp_name], label=camp_name) # adjusted for fraction of population
             ax.set_title(camp_name)
             ax.set_xlabel('Date')
             ax.set_ylabel('Population')
