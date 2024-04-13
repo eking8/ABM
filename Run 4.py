@@ -6,12 +6,10 @@ ALPHA 5
 
 - Capacity empirically derived - No idea how to get this - assumed to be 20,000 as none of camps go above this
 
-~3hr
-- Logic for passing No-Go list to 1-3 random agents per node
-- Ensure for the above that the random agents are selected from not in family
 
 ~4hr
-- Logic for creating families (household size distribtuons)
+- self.is_leader === >logic that randomly assigns leader
+- Formation of groups
 - Families will share the following:
 ----- 'No-Go' zones  
 ----- Slowest walking speed
@@ -32,14 +30,14 @@ ALPHA 5
 - Agent birth mechanisms
 - Empirically derive births
 
-~30min
-- Rich leaving the airport to an 'abroad' index
-
 ~2hr
 - Incorporate average times at different nodes
 
 ~3hr
 - Foreign conflicts
+
+VISUALISATION:
+- Refugees/IDPs/Returnees distribution
 
 SCORE BASED ON:
 - Destination node distance
@@ -788,7 +786,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 10000 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)

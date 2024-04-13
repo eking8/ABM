@@ -64,9 +64,10 @@ class Agent:
         )
         self.city_origin = self.location
         self.shortterm = self.location
+        self.fam=[]
 
         if self.in_family:
-            self.fam_size=3 # Replace with statistical distribution
+            self.fam_size=random.randint(0, 5) # Replace with empirical distribution
             self.fam=[] # Assign other agents 
             self.speed=min([x.speed for x in self.fam])
             # self.is_leader === >logic that randomly assigns leader
@@ -137,9 +138,12 @@ class Agent:
 
                 if self.location == self.longterm:
                     self.moving = False
-                    self.status = 'Resident'
-                    # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                     self.enddate=current_date
+                    if self.capitalbracket=='Rich':
+                        self.location = 'Abroad'
+
+                    # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
+                    
                     # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
                 
                 else:
@@ -175,19 +179,19 @@ class Agent:
     
     def merge_nogo_lists(self, all_agents):
         """
-        This method allows an agent to merge their 'nogos' list with those of 1-3 other agents in the same city.
+        This method allows an agent to merge their 'nogos' list with those of 0-3 other agents in the same city.
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
         local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
 
         # Randomly select 1-3 agents to interact with
-        number_of_agents = random.randint(1, 3)
+        number_of_agents = random.randint(0, 3)
         selected_agents = random.sample(local_agents, min(number_of_agents, len(local_agents)))
 
         # Merge the nogo lists
         for agent in selected_agents:
-            if selected_agents not in self.fam:
+            if agent in self.fam:
                 combined_nogos = set(self.nogos).union(agent.nogos)
                 # Update each agent's nogo list
                 self.nogos = list(combined_nogos)
