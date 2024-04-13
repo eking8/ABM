@@ -10,6 +10,7 @@ BETA 1
 ~4hr
 - self.is_leader === >logic that randomly assigns leader
 - Formation of groups
+- He-In group types (will the family travel together)
 - Families will share the following:
 ----- 'No-Go' zones  
 ----- Slowest walking speed
@@ -35,6 +36,9 @@ BETA 1
 
 ~3hr
 - Foreign conflicts
+
+~2hr
+- Empirica; derrivation of capital brackets
 
 VISUALISATION:
 - Refugees/IDPs/Returnees distribution
@@ -770,7 +774,8 @@ loc_dic = {'Bamako':bamako,
            'Filingué':filingue,
            'Bafoulabé':bafoulabe,
            'Bengassi':bengassi,
-           'Kéniéba':kenieba}
+           'Kéniéba':kenieba,
+           'Abroad':None}
 
 # Locations without an OSMNX are assumed to be within the closest city
 
@@ -786,7 +791,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 1000 # TO VARY
+frac = 10000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -879,12 +884,14 @@ for current_date in dates:
     
     for id in Agents:
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
-        loc_dic[Agents[id].shortterm].addmember(id)
-        loc_dic[Agents[id].location].removemember(id)
-        G.nodes[Agents[id].location]['population'] -= 1 # update nodes
-        G.nodes[Agents[id].shortterm]['population'] += 1
+        if Agents[id].moving:
+            loc_dic[Agents[id].shortterm].addmember(id)
+            loc_dic[Agents[id].location].removemember(id)
+            G.nodes[Agents[id].location]['population'] -= 1 # update nodes
+            G.nodes[Agents[id].shortterm]['population'] += 1
+            Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
 
-        Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
+        
 
         processed_agents += 1  # Update the counter after processing each agent
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)

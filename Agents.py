@@ -67,7 +67,8 @@ class Agent:
         self.fam=[]
 
         if self.in_family:
-            self.fam_size=random.randint(0, 5) # Replace with empirical distribution
+            random_poisson = np.random.poisson(6.18)
+            self.fam_size=random_poisson + np.random.normal(0,0.1) # Replace with empirical distribution
             self.fam=[] # Assign other agents 
             self.speed=min([x.speed for x in self.fam])
             # self.is_leader === >logic that randomly assigns leader
@@ -110,19 +111,20 @@ class Agent:
         return random.choices(choices, weights=probabilities, k=1)[0]
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
-        self.location = self.shortterm
-        if city.hasconflict and city.fatalities > self.threshold:
-            self.nogos.append(city.name)
-            if self.status == 'Resident':
-                    self.moving = True
-                    self.status = 'Fleeing from conflict'
-                    # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
-                    self.startdate=current_date
-
-
         
+        if self.status != 'Abroad':
+            if city.hasconflict and city.fatalities > self.threshold:
+                self.nogos.append(city.name)
+                if self.status == 'Resident':
+                        self.moving = True
+                        self.status = 'Fleeing from conflict'
+                        # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
+                        self.startdate=current_date
+
 
         if self.moving == True and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+            
+            self.location = self.shortterm
 
             if self.location in self.__class__.foreign_cities:
                 self.status='Refugee'
@@ -141,6 +143,7 @@ class Agent:
                     self.enddate=current_date
                     if self.capitalbracket=='Rich':
                         self.location = 'Abroad'
+                        self.been_abroad=True
 
                     # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                     
