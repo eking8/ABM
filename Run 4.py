@@ -4,15 +4,11 @@ TO DO
 
 BETA 1
 
+
+
 ~1hr
 - Remove capacity logic
 - Implement population as a hinderance
-
-
-~4hr
-- Families will share the following:
------ 'No-Go' zones  
-- Followers (such as children) should not follow same decision logic (if statement at start which sees if follower)
 
 ~ 2hr
 - fix bug with capital bracket distribution and family
@@ -777,14 +773,32 @@ loc_dic = {'Bamako':bamako,
            'Bafoulabé':bafoulabe,
            'Bengassi':bengassi,
            'Kéniéba':kenieba,
-           'Abroad':None}
+           'Abroad':None,
+           'Kedougou':kedougou,
+           'Siguiri':siguiri,
+           'Dinguiraye':dinguiraye,
+           'Mandiana':mandiana,
+           "Fodekaria":fodekaria,
+           "Néma":nema,
+           "Bakel":bakel,
+           "Tambacounda":tambacounda,
+           "Adel Bagrou":adel_bagrou,
+           "Timbédra":timbedra,
+           "Bordj Badji Mokhtar":bordj_badji_mokhtar,
+           "Tchera Rouissa":tchera_rouissa,
+           "Odienne":odienne,
+           'Boundiali':boundiali,
+           "Tintane":tintane,
+           "Korhogo":korhogo,
+           "Assamakka":assamakka}
 
 # Locations without an OSMNX are assumed to be within the closest city
 
 kidals = ['Imezzehene','Tin Kaloumane']
 bamakos = ['Doubabougou','Kati','Kambila']
 
-print("Starting simulation...")
+print("Initilising graph... \n")
+
 start_time = time.time()
 
 
@@ -793,7 +807,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 10000 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -824,7 +838,7 @@ Agent.initialise_populations(cities,total_population)
 Agents = {}
 ags = []
 
-
+print("Forming families... \n")
 for i in list(range(1,n_agents+1)):
     Agents[i] = Agent(i)
     loc_dic[Agents[i].location].addmember(i)
@@ -834,19 +848,36 @@ for agent in ags:
     agent.form_families(ags)
 
 for agent in ags: # must initialise new for loop to ensure all families initialised
-    agent.form_fam_groups()
+    agent.form_fam_group()
     
 for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
     agent.define_groups()
 
 for agent in ags: # must initialise new group to ensure all family travelling groups initialised
-    agent.group_speeds()
+    agent.group_speeds_and_cap()
+
+"""
+FAM GROUP B.U.G FIX
+for agent in ags:
+    print([x.id for x in agent.fam])
+    for af in agent.group:
+        if af.leftfam:
+            print(colors.PURPLE + str(af.id) + colors.END)
+        elif af.is_leader:
+            print(colors.RED + str(af.id) + colors.END)
+        else:
+            print(colors.GREEN + str(af.id) + colors.END)
+    print("\n")
+
+"""
 
 
 
 populations = {camp.name: [] for camp in camps}
 
 total_agents = len(Agents)
+
+print("Starting simulation...")
 
 for current_date in dates: 
 
@@ -856,8 +887,7 @@ for current_date in dates:
     
     """   
     processed_agents = 0
-    
-
+        
     print("\n")
     print(f"Simulating day: {current_date.strftime('%Y-%m-%d')}")
 
@@ -898,11 +928,31 @@ for current_date in dates:
     # print(colors.PURPLE, "current conflicts",[con.name for con in ongoing_conflicts], colors.END)
     
     for id in Agents:
+        
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
 
         if Agents[id].moving:
+            
+            # print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
+            #      + " to " + str(loc_dic[Agents[id].shortterm].name))
+            #if Agents[id].is_leader:
+            #    if Agents[id].leftfam or len(Agents[id].group)==1:
+            #        print(colors.YELLOW + "Solo" + colors.END)
+            #    else:
+            #        print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
+            #else:
+            #    print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
+            
+            # print(str(loc_dic[Agents[id].location].name) + " before : " +str(loc_dic[Agents[id].location].members))
+            # print(str(loc_dic[Agents[id].shortterm].name) + " before : " +str(loc_dic[Agents[id].shortterm].members))
+
             loc_dic[Agents[id].shortterm].addmember(id)
             loc_dic[Agents[id].location].removemember(id)
+
+            # print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
+            # print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
+            # print("\n")
+            
             G.nodes[Agents[id].location]['population'] -= 1 # update nodes
             G.nodes[Agents[id].shortterm]['population'] += 1
             if not Agents[id].merged:
@@ -1009,4 +1059,3 @@ for id in Agents:
         print(colors.RED + Agents[id].location + colors.END)
 """
 # draw_graph(G, current_date, distances_on=True)
-        

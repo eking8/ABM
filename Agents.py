@@ -49,83 +49,27 @@ class Agent:
         self.startdate=None
         self.enddate=None
         self.traveltime=None
-        self.nogos=[]
+        self.nogos=set()
         self.country_origin='Mali'
         self.is_stuck=False
         self.been_abroad=False
-        self.is_leader=False 
+        self.is_leader=False
         self.in_family=False 
         self.fam_size=1
         self.fam=None
-        self.is_leader=True
         self.location = np.random.choice(
             list(self.__class__.city_probabilities.keys()),
             p=self.__class__.normalized_prob_values
         )
         self.city_origin = self.location
         self.shortterm = self.location
-        self.fam=[] # carried by all members of the family
+        self.fam=[self] # carried by all members of the family
         self.merged=False
         self.travelswithfam=False
-        self.group=[] # carried by leader only
-    
-
-        def form_families(self,all_agents):     
-
-            self.fam.append(self)
-
-            if self.in_family == False:
-
-                if 18<self.age<65:
-
-                    self.is_leader==True
-
-                    local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
-                    available_agents = [agent for agent in local_agents if agent.in_family != True and agent.is_leader != True]
-                    
-                    random_poisson = np.random.poisson(6.18)
-                    self.fam_size=random_poisson + np.random.normal(0,0.1) - 1
-
-                    self.fam.append(random.sample(available_agents, min(self.fam_size, len(available_agents))))
-                    
-
-
-                    for agent in self.fam:
-                        agent.fam=self.fam
-
-            
-                
-        def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
-            # prob of travelling with fam / prob of being in fam = prob of travelling with fam given in fam
-            if self.in_family:
-                self.travelswithfam= random.random() < 0.596/0.98 
-            else:
-                self.travelswithfam= False
-                self.is_leader=True
-
-        def define_groups(self):
-            if self.in_family:
-                if self.is_leader:
-                    if self.travelswithfam:
-                        self.group=[x for x in self.fam if x.travelswithfam]
-                    else:
-                        max_member = max((x for x in self.fam if x.travelswithfam and x <65), key=lambda x: x.age)
-                        max_member.is_leader=True
-                        max_member.group=[x for x in self.fam if x.travelswithfam]
-            else:
-                # strategic group stuff here
-                self.group=[self]
-
-
-            
-
-        def group_speeds(self):
-        
-            self.speed = min([x.speed for x in self.group])
-
-            
-
-
+        self.group=[self] # carried by leader only
+        self.ingroup=False
+        self.checked=False
+        self.leftfam=False
 
         if rand_n>0.90:
             self.capitalbracket = 'Rich'
@@ -135,12 +79,107 @@ class Agent:
             self.capitalbracket = 'Poor'
 
         if self.capitalbracket == 'Poor': # No access to car
-            self.speed = abs(np.random.normal(200,10))
+            self.speed = abs(np.random.normal(200,50))
         else:
-            self.speed = abs(np.random.normal(600, 10))
+            self.speed = abs(np.random.normal(400, 100))
+    
 
+    def form_families(self,all_agents):     
+
+
+        if not self.in_family and not self.checked:
+
+            if 16<self.age<65:
+                
+
+                self.in_family=True
+                
+                local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
+                available_agents = [agent for agent in local_agents if not agent.in_family and not agent.checked and agent.id>self.id]
+                
+                random_poisson = np.random.poisson(6.18)
+                fam_size=int(random_poisson + np.random.normal(0,0.1))
+
+                if fam_size < 1:
+                    fam_size = 1
+                    self.in_family=False
+                
+                self.fam_size = fam_size
+
+                self.fam += random.sample(available_agents, min(self.fam_size -1, len(available_agents)))
+                    
+                
+                for agent in self.fam:
+                    agent.in_family=True
+                    agent.fam=self.fam
+                    agent.checked=True
+
+                self.is_leader=True
+                
+        
+
+            
+                
+    def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
+        # prob of travelling with fam / prob of being in fam = prob of travelling with fam given in fam
+        if self.in_family:
+            self.travelswithfam= random.random() < 0.596/0.98 
+        else:
+            self.is_leader=True
+
+
+
+
+    def define_groups(self):
+        if self.in_family and not self.ingroup:
+            
+            if self.is_leader:
+                
+                if self.travelswithfam:
+                    
+                    
+                    self.group = [x for x in self.fam if x.travelswithfam]
+                    self.group= sorted(self.group, key=lambda agent: agent.id)
+                    for agent in self.group:
+                        agent.group=self.group
+                        agent.ingroup=True
+                    
+                else:
+                    self.leftfam=True
+                    max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
+                    if max_member:
+                        max_member.is_leader=True
+                        max_member.group=[x for x in max_member.fam if x.travelswithfam]
+                        max_member.group = sorted(max_member.group, key=lambda agent: agent.id)
+                        max_member.ingroup=True
+                        for agent in max_member.group:
+                            agent.group=max_member.group
+                            agent.ingroup=True
+            
+            else:
+                if not self.travelswithfam:
+                    self.leftfam=True
+                    self.is_leader=True
+        
+        
+                    
 
         
+            # strategic group stuff here
+
+        
+            
+
+
+            
+
+    def group_speeds_and_cap(self):
+        
+        self.speed = min(x.speed for x in self.group)
+
+        if self.is_leader:
+            for agent in self.group:
+                agent.capitalbracket=self.capitalbracket
 
     # Calculate the cumulative distribution
     cumulative_distribution = np.cumsum(probabilities)
@@ -163,90 +202,85 @@ class Agent:
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
         
-    
+        
         if self.is_leader and not self.is_stuck:
             self.merged = False
 
             if self.location != 'Abroad':
                 
                 if city.hasconflict and city.fatalities > self.threshold:
-                    
                     for agent in self.group:
-                        agent.nogos.append(city.name)
-
-                    if self.status == 'Resident':
-                            for agent in self.group:
-
+                        agent.nogos.update(city.name)
+                        if agent.status == 'Resident':
+                                
                                 agent.moving = True
                                 agent.status = 'Fleeing from conflict'
                                 # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
                                 agent.startdate=current_date
+                            
+                                
 
 
-            if self.moving == True and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+            if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
                 
-                self.group = [setattr(agent, 'location', agent.shortterm) for agent in self.group]
-
+                for agent in self.group:
+                    agent.location=agent.shortterm
                 if self.location in self.__class__.foreign_cities:
-                    self.group = [setattr(agent, 'status', 'Refugee') for agent in self.group]
-                    self.group = [setattr(agent, 'been_abroad', True) for agent in self.group]
-                
+                    new_status = 'Refugee'
+                    self.been_abroad = True
                 elif self.been_abroad:
-                    self.group = [setattr(agent, 'status', 'Returnee') for agent in self.group]
+                    new_status = 'Returnee'
                 else:
-                    self.group = [setattr(agent, 'status', 'IDP') for agent in self.group]
+                    new_status = 'IDP'
 
-                self.group = [setattr(agent, 'traveltime', current_date-agent.startdate) for agent in self.group]
-                
-                
-
-                if self.location == self.longterm:
-                    self.group = [setattr(agent, 'moving', False) for agent in self.group]
-                    self.group = [setattr(agent, 'enddate', current_date) for agent in self.group]
+                for agent in self.group:
+                    agent.status = new_status
+                    agent.been_abroad = self.been_abroad
                     
-                    if self.capitalbracket=='Rich':
-                        self.group = [setattr(agent, 'location', 'Abroad') for agent in self.group]
-                        self.group = [setattr(agent, 'been_abroad', True) for agent in self.group]
+                    agent.traveltime = current_date - agent.startdate
+
+                    if self.location == self.longterm:
+                        agent.moving = False
+                        agent.enddate = current_date
+                        
+                        if self.capitalbracket == 'Rich':
+                            agent.location = 'Abroad'
+                            agent.been_abroad = True
 
                         # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                         
                         # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
                     
+            
+
+                destination_dict = None
+
+                if self.capitalbracket == 'Rich':
+                    destination_dict = find_nearest_cities_with_airport(G, self.location, self.speed, self.nogos)
+                elif self.capitalbracket == 'Mid':
+                    destination_dict = find_shortest_paths_to_neighboring_countries(G, self.location, self.speed, current_date, self.nogos)
                 else:
+                    destination_dict = camp_paths(G, self.location, self.speed, current_date, self.nogos)
 
-                    if self.capitalbracket == 'Rich':
-                        des_dic = find_nearest_cities_with_airport(G,self.location,self.speed,self.nogos)
-
-                    elif self.capitalbracket == 'Mid':
-                        des_dic=find_shortest_paths_to_neighboring_countries(G,self.location,self.speed,current_date,self.nogos)
-
-                    else:
-                        des_dic=camp_paths(G,self.location,self.speed,current_date,self.nogos)
-                        
-                    if des_dic:
-
-                        key = self.roulette_select(des_dic)
-
-                        if key:
-        
-                            self.group = [setattr(agent, 'distanceleft', des_dic[key]['distance']) for agent in self.group]       
-                            self.group = [setattr(agent, 'longterm', key) for agent in self.group]       
-                            self.group = [setattr(agent, 'shortterm', des_dic[key]['path'][0]) for agent in self.group]       
-                        
+                if destination_dict:
+                    key = self.roulette_select(destination_dict)
+                    if key:
+                        for agent in self.group:
+                            agent.distanceleft = destination_dict[key]['distance']
+                            agent.longterm = key
+                            agent.shortterm = destination_dict[key]['path'][0]
+                            # Debugging print statements can be uncommented for additional logs
                             # print("location = " + self.location + ", and short term = " + str(self.shortterm))
                             # print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
-                            
-
-                        else:
-
-                            # print("Distance too large for Agent " + str(self.id) + " to travel")
-                            self.fam = [setattr(agent, 'is_stuck', True) for agent in self.fam]
-                            self.fam = [setattr(agent, 'moving', False) for agent in self.fam]
+                else:
+                    for agent in self.group:
+                        agent.is_stuck = True
+                        agent.moving = False
                     
     
     def merge_nogo_lists(self, all_agents):
         """
-        This method allows an agent to merge their 'nogos' list with those of 0-3 other agents in the same city.
+        This method allows an agent to merge their 'nogos' set with those of 0-3 other agents in the same city.
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
@@ -263,10 +297,10 @@ class Agent:
         for agent in selected_agents:
             if agent in self.fam:
                 agent.merged=True
-                combined_nogos = set(self.nogos).union(agent.nogos)
+                combined_nogos = self.nogos.union(agent.nogos)
                 # Update each agent's nogo list
-                self.nogos = list(combined_nogos)
-                agent.nogos = list(combined_nogos)
+                self.nogos = combined_nogos
+                agent.nogos = combined_nogos
                 
         
         
@@ -385,6 +419,9 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     Returns:
     - A dictionary with the 5 nearest cities' names as keys, each associated with a dictionary containing 'distance' and 'path'.
     """
+    if start_node in nogo:
+        nogo.remove(start_node)
+
     G_filtered = filter_graph_by_max_link_length(G, max_link_length,start_node,nogo=nogo)
 
     if not G_filtered.has_node(start_node):
@@ -443,7 +480,7 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
 
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
-                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')
+                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]
 
                 # If the city is closer than any previously found or if it's the first city found for this country
                 if node not in results or path_length < results[node]['distance']:
@@ -458,8 +495,6 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     # Step 1: Create a new empty graph to hold the filtered graph
     G_filtered = nx.Graph()
 
-    if start_node in nogo:
-        nogo.remove(start_node)
     
     # Step 2: Copy all nodes from G to G_filtered, preserving attributes
     for node, data in G.nodes(data=True):
@@ -467,6 +502,9 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
         if node not in nogo:
             if data.get('population', False) < data.get('capacity', False):
                 G_filtered.add_node(node, **data)
+            
+    if start_node not in G_filtered:
+        G_filtered.add_node(start_node)
     
     # Step 3: Filter edges by max_link_length and add them to G_filtered
     for u, v, d in G.edges(data=True):
