@@ -71,9 +71,9 @@ class Agent:
         self.checked=False
         self.leftfam=False
 
-        if rand_n>0.90:
+        if rand_n>0.9965: # capital 100000
             self.capitalbracket = 'Rich'
-        elif rand_n>0.50:
+        elif rand_n>0.6094: # capital > 10000
             self.capitalbracket = 'Mid'
         else:
             self.capitalbracket = 'Poor'
