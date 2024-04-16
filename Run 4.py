@@ -807,7 +807,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 1000 # TO VARY
+frac = 10000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -1042,7 +1042,7 @@ if count_path is not None:
 """
 
 for camp in camps:
-    print("Camp in " + str(camp.name) + " is " + str(camp.population))
+    print("Camp in " + str(camp.name) + " is " + str(camp.population*frac))
 
 
 

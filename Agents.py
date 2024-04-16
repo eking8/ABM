@@ -259,13 +259,16 @@ class Agent:
 
                 if self.capitalbracket == 'Rich':
                     destination_dict = find_nearest_cities_with_airport(G, self.location, self.speed, self.nogos)
+                    iscamp=False
                 elif self.capitalbracket == 'Mid':
                     destination_dict = find_shortest_paths_to_neighboring_countries(G, self.location, self.speed, current_date, self.nogos)
+                    iscamp=False
                 else:
                     destination_dict = camp_paths(G, self.location, self.speed, current_date, self.nogos)
+                    iscamp=True
 
                 if destination_dict:
-                    key = self.roulette_select(destination_dict)
+                    key = self.roulette_select(destination_dict,iscamp)
                     if key:
                         for agent in self.group:
                             agent.distanceleft = destination_dict[key]['distance']
@@ -313,10 +316,10 @@ class Agent:
 
 
     
-    def roulette_select(self, distances):
+    def roulette_select(self, distances,iscamp):
         """
         Select a key from the distances dictionary using roulette method,
-        where scores are computed as `familiar - a * distance + b`.
+        where scores are computed as `familiar - a * distance + b - c * population`.
 
         :param distances: Dictionary of {key: {'distance': value}}
         :return: Selected key based on roulette selection
@@ -331,15 +334,19 @@ class Agent:
 
         a = self.age/1000 
         b = 50 # bias assumed to be 50 
+
+        if iscamp:
+            c = 1/2000
+        else:
+            c=0
         
         # Compute scores using familiarity and distance
-        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b for key in distances}
+        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] for key in distances}
         
         # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
         total_score_sum = sum(max(score, 0) for score in scores.values())
 
         if total_score_sum == 0:
-            print("All scores are zero or negative, unable to select.")
             return None
         
         # Normalize scores to probabilities
@@ -402,6 +409,8 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
         print('error with start node')
         return None
     
+    pops={}
+    
     distances, paths = nx.single_source_dijkstra(G_filtered, start_node)
     camp_paths_distances = {}
     for node, data in G.nodes(data=True):
@@ -409,8 +418,9 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
             if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
                 pass # boarder does not open before 21st feb
             else:
+                pops[node]=data.get('population',0)
                 paths[node].remove(start_node)
-                camp_paths_distances[node] = {'path':paths[node], 'distance':distances[node]}
+                camp_paths_distances[node] = {'path':paths[node], 'distance':distances[node],'population':pops[node]}
 
     
     return camp_paths_distances
@@ -437,6 +447,11 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     if not G_filtered.has_node(start_node):
         print('Error: Start node is not present in the filtered graph.')
         return {}
+    
+    pops={}
+    
+    for node, data in G.nodes(data=True):
+        pops[node]=data.get('population',0)
 
     cities_info = {}
 
@@ -445,7 +460,7 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
                 path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]  # Exclude start node from path
-                cities_info[node] = {'distance': path_length, 'path': path}
+                cities_info[node] = {'distance': path_length, 'path': path, 'population':pops[node]}
             except nx.NetworkXNoPath:
                 pass
 
@@ -478,12 +493,14 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
         print('Error: Start node is not present in the filtered graph.')
         return {}
 
+    pops={}
     results = {}
     start_country = G.nodes[start_node].get('country', 'Not specified')
 
     for node, data in G_filtered.nodes(data=True):
         country = data.get('country', None)
         if country and country != start_country:
+            
             # Apply the border closure rule for Niger and Burkina Faso
             if country in ['Niger', 'Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
                 continue  # Skip this city if the current date is before the border opening date
@@ -491,10 +508,10 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
                 path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]
-
+                pops[node]=data.get('population',0)
                 # If the city is closer than any previously found or if it's the first city found for this country
                 if node not in results or path_length < results[node]['distance']:
-                    results[node] = {'distance': path_length, 'path': path}
+                    results[node] = {'distance': path_length, 'path': path, 'population':pops[node]}
             except nx.NetworkXNoPath:
                 pass  # No path exists to this node, ignore it
 
