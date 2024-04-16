@@ -20,7 +20,7 @@ def create_graph(locations):
         node_type = 'City' if hasattr(loc, 'iscity') and loc.iscity else 'Camp'
         # Add node with initial attributes except for conflict
         G.add_node(loc.name, pos=(loc.longitude, loc.latitude), type=node_type, has_airport=hasattr(loc, 'hasairport') and loc.hasairport, has_conflict=loc.hasconflict, country=loc.country, fatalities=loc.fatalities, 
-                   population=loc.population, capacity=loc.capacity)
+                   population=loc.population)
         
         # Add edges with border crossing information
         for conn in loc.connections:

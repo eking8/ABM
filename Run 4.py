@@ -13,18 +13,11 @@ BETA 1
 --- Conclusion
 - Implement in code
 
-~30mins
-- Implement population as a hinderance
-
 ~5hr
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
 
-~2hr
-- "DANGER LEVELS' -> roulette function now a function of a score rather than just distance
-
 ~4hr
-- Conflict fatalieis -> agent death mechanisms
 - Agent birth mechanisms
 - Empirically derive births
 
@@ -36,6 +29,10 @@ BETA 1
 
 ~4hr
 - Leaving camps??
+- Reassess score after x days
+
+~ 2hr
+- clean up code 896-...
 
 
 VISUALISATION:
@@ -43,7 +40,6 @@ VISUALISATION:
 
 SCORE BASED ON:
 - Destination node distance EASY
-- Population EASY
 - How frequent the link is travelled HARD (Extend familiarity to transition nodes?)
 - Destination node danger HARD
 - First node in path danger HARD
@@ -62,7 +58,7 @@ import numpy as np
 import csv
 import time
 from Locations import City, Camp, total_pop
-from Agents import Agent
+from Agents import Agent, deathmech
 from Network import create_graph, draw_graph
 from Visualisations import colors, print_progress_bar
 
@@ -815,7 +811,7 @@ n_agents = int(total_population/frac)
 for loc in locations:
     loc.population= int(loc.population/frac)
 
-city_probabilities = {city.name: city.population / total_population for city in cities}
+city_probabilities = {city.name: city.population / n_agents for city in cities}
 
 prob_values = list(city_probabilities.values())
 
@@ -868,11 +864,21 @@ for agent in ags:
 
 """
 
+if (45.92*n_agents)>(365*1000):
+    birth_rate = round((45.92*n_agents)/(365*1000))
+    bpd = True
+else:
+    birth_rate = round(1/((45.92*n_agents)/(365*1000))) # derived from https://www.statista.com/statistics/977023/crude-birth-rate-in-mali/
+    bpd = False
 
+
+print(birth_rate)
 
 populations = {camp.name: [] for camp in camps}
 
 total_agents = len(Agents)
+
+days = 0
 
 print("Starting simulation...")
 
@@ -902,20 +908,80 @@ for current_date in dates:
 
         # print("Conflict in " + event['location'])
 
+        fat = event['fatalities']
         # Dealing with the exceptions between ACLED and OSMNX
         if event['location'] in kidals:
+
             G.nodes['Kidal']['has_conflict']=True
+
+            G.nodes['Kidal']['population']-= fat
+            death_ids = deathmech(loc_dic['Kidal'].members,fat) 
+            loc_dic['Kidal'].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
+
+
+
         elif event['location'] in bamakos:
+
             G.nodes['Bamako']['has_conflict']=True
+
+            G.nodes['Bamako']['population']-= fat
+            death_ids = deathmech(loc_dic['Bamako'].members,fat) 
+            loc_dic['Bamako'].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
+            
         elif event['location']=='Tin Zaouaten':
             G.nodes['Tinzaouaten']['has_conflict']=True
+
+            G.nodes['Tinzaouaten']['population']-= fat
+            death_ids = deathmech(loc_dic['Tin Zaouaten'].members,fat) 
+            loc_dic['Tin Zaouaten'].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
+
         elif event['location']=='Komeye Koukou':
             G.nodes['Koue']['has_conflict']=True
+
+            G.nodes['Koue']['population']-= fat
+            death_ids = deathmech(loc_dic['Koue'].members,fat) 
+            loc_dic['Koue'].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
+
         elif event['location']=='Syama Gold Mine':
             G.nodes['Syama']['has_conflict']=True
+
+            G.nodes['Syama']['population']-= fat
+            death_ids = deathmech(loc_dic['Syama'].members,fat) 
+            loc_dic['Syama'].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
         else:
             G.nodes[event['location']]['has_conflict']=True
+
+            G.nodes[event['location']]['population']-= fat
+            death_ids = deathmech(loc_dic[event['location']].members,fat) 
+            loc_dic[event['location']].population -= fat
+
+            if death_ids:
+                for id in death_ids:
+                    Agents[id].kill(frac)
+            
+
         location.in_city_conflict(event['fatalities'], current_date)
+
         if location not in ongoing_conflicts:
             ongoing_conflicts.append(location)
 
@@ -963,6 +1029,17 @@ for current_date in dates:
     for camp in camps:
         pop=camp.population*frac
         populations[camp.name].append(pop)
+    
+    if bpd:
+        for new_id in range(i,i+birth_rate+1):
+            Agents[i]=Agent(i)
+        i+=birth_rate
+    else:
+        if days%birth_rate==0:
+            Agents[i]=Agent(i)
+
+    days+=1
+
     
 camp_names = list(populations.keys())
 n_camps = len(camp_names)

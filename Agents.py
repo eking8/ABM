@@ -201,24 +201,30 @@ class Agent:
         probabilities = [0.503, 0.497]
         choices = ['M', 'F']
         return random.choices(choices, weights=probabilities, k=1)[0]
+    
+    def kill(self, frac):
+        val = random.randint(1, frac)
+        if val==1:
+            self.status='Dead'
+        
+
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
         
         
-        if self.is_leader and not self.is_stuck:
+        if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
             self.merged = False
 
-            if self.location != 'Abroad':
-                
-                if city.hasconflict and city.fatalities > self.threshold:
-                    for agent in self.group:
-                        agent.nogos.update(city.name)
-                        if agent.status == 'Resident':
+            
+            if city.hasconflict and city.fatalities > self.threshold:
+                for agent in self.group:
+                    agent.nogos.update(city.name)
+                    if agent.status == 'Resident':
                                 
-                                agent.moving = True
-                                agent.status = 'Fleeing from conflict'
-                                # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
-                                agent.startdate=current_date
+                            agent.moving = True
+                            agent.status = 'Fleeing from conflict'
+                            # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
+                            agent.startdate=current_date
                             
                                 
 
@@ -536,3 +542,13 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
             G_filtered.add_edge(u, v, **d)
     
     return G_filtered
+
+def deathmech(members,fat):
+    if fat==0:
+        return None
+    elif len(members)>fat:
+        death_ids=random.sample(members,fat)
+    else:
+        death_ids=members
+    
+    return members

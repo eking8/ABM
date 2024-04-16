@@ -87,7 +87,6 @@ class City(Location):
         self.iscamp = False # by definition
         self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulationm
         self.top20 = top20 # if has top 20 population
-        self.capacity=np.inf # may be changed later
 
     def in_city_conflict(self, fatalities, current_date):
         """
@@ -122,13 +121,12 @@ class City(Location):
 
 
 class Camp(Location):
-    def __init__(self, name, country, population=None, capacity=20000): # Need to change capacity to empirically derived
+    def __init__(self, name, country, population=None): # Need to change capacity to empirically derived
         super().__init__(name, country)
         self.population = population
         self.hasairport = False # by definition
         self.iscity = False # by definition
         self.iscamp = True # by definition
-        self.capacity = capacity
 
     
 
