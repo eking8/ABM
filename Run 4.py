@@ -4,22 +4,21 @@ TO DO
 
 BETA 1
 
+~2hr
+- Course on optimisation:
+--- Optimising Loops
+--- NumPy
+--- Parallelism
+--- Compilation
+--- Conclusion
+- Implement in code
 
-
-~1hr
-- Remove capacity logic
+~30mins
 - Implement population as a hinderance
-
-~ 2hr
-- fix bug with capital bracket distribution and family
-- capital bracket should be assigned to leader (less likely to be rich with bigger fam)
 
 ~5hr
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
-
-~1hr
-- Consider next to nodes (indirect) from conflicts as an attribute for cities (will help to model IDPs)
 
 ~2hr
 - "DANGER LEVELS' -> roulette function now a function of a score rather than just distance
@@ -35,19 +34,20 @@ BETA 1
 ~3hr
 - Foreign conflicts
 
-~2hr
-- Empirica; derrivation of capital brackets
+~4hr
+- Leaving camps??
+
 
 VISUALISATION:
 - Refugees/IDPs/Returnees distribution
 
 SCORE BASED ON:
-- Destination node distance
-- How frequent the link is travelled
-- Destination node danger
-- First node in path danger
-- What people are saying (i.e. other people's destination)
-- Perhaps percentage full
+- Destination node distance EASY
+- Population EASY
+- How frequent the link is travelled HARD (Extend familiarity to transition nodes?)
+- Destination node danger HARD
+- First node in path danger HARD
+
 
 
 COMMUNICATION
@@ -814,9 +814,6 @@ n_agents = int(total_population/frac)
 
 for loc in locations:
     loc.population= int(loc.population/frac)
-
-for camp in camps:
-    camp.capacity = int(camp.capacity/frac)
 
 city_probabilities = {city.name: city.population / total_population for city in cities}
 

@@ -70,6 +70,8 @@ class Agent:
         self.ingroup=False
         self.checked=False
         self.leftfam=False
+        self.familiar={}
+        
 
         if rand_n>0.9965: # capital 100000
             self.capitalbracket = 'Rich'
@@ -284,7 +286,7 @@ class Agent:
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
-        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
+        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged]
 
         # Randomly select 1-3 agents to interact with
         number_of_agents = random.randint(0, 3)
@@ -297,10 +299,14 @@ class Agent:
         for agent in selected_agents:
             if agent in self.fam:
                 agent.merged=True
-                combined_nogos = self.nogos.union(agent.nogos)
                 # Update each agent's nogo list
-                self.nogos = combined_nogos
-                agent.nogos = combined_nogos
+                combined_nogos = self.nogos.union(agent.nogos)
+                self.nogos = agent.nogos = combined_nogos
+                # familiar destinations passed on
+                self.familiar[agent.longterm] = self.familiar.get(agent.longterm, 0) + 1
+                agent.familiar[self.longterm] = agent.familiar.get(self.longterm, 0) + 1
+                
+
                 
         
         
@@ -310,8 +316,8 @@ class Agent:
     def roulette_select(self, distances):
         """
         Select a key from the distances dictionary using roulette method,
-        where shorter distances have higher probabilities of being selected.
-        
+        where scores are computed as `familiar - a * distance + b`.
+
         :param distances: Dictionary of {key: {'distance': value}}
         :return: Selected key based on roulette selection
         """
@@ -319,21 +325,25 @@ class Agent:
         if distances is None:
             print('No routes')
             return None
-        
-        distances = {key: value for key, value in distances.items() if value['distance'] != 0}
-            
-        
-        # Invert distances to treat smaller distances as larger for selection
-        inverted_distances = {key: 1.0 / distances[key]['distance'] for key in distances}
-        
-        # Calculate total sum of inverted distances
-        total_inverted_sum = sum(inverted_distances.values())
 
-        if total_inverted_sum == 0:
+        # Filter out routes with distance of 0, as these can't be scored properly
+        distances = {key: value for key, value in distances.items() if value['distance'] != 0}
+
+        a = self.age/1000 
+        b = 50 # bias assumed to be 50 
+        
+        # Compute scores using familiarity and distance
+        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b for key in distances}
+        
+        # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
+        total_score_sum = sum(max(score, 0) for score in scores.values())
+
+        if total_score_sum == 0:
+            print("All scores are zero or negative, unable to select.")
             return None
         
-        # Normalize inverted distances to probabilities
-        probabilities = {key: inverted_distances[key] / total_inverted_sum for key in inverted_distances}
+        # Normalize scores to probabilities
+        probabilities = {key: max(scores[key], 0) / total_score_sum for key in scores}
         
         # Prepare for roulette wheel selection
         cumulative_prob = 0.0
@@ -498,10 +508,7 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     
     # Step 2: Copy all nodes from G to G_filtered, preserving attributes
     for node, data in G.nodes(data=True):
-        
-        if node not in nogo:
-            if data.get('population', False) < data.get('capacity', False):
-                G_filtered.add_node(node, **data)
+        G_filtered.add_node(node, **data)
             
     if start_node not in G_filtered:
         G_filtered.add_node(start_node)
