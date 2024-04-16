@@ -37,9 +37,14 @@ class Agent:
         cls.probabilities = [pop / sum(cls.populations) for pop in cls.populations]
         cls.cumulative_distribution = np.cumsum(cls.probabilities)
 
-    def __init__(self, id, status = 'Resident'):
+    def __init__(self, id, status = 'Resident', age=None, is_leader=False):
         self.id = id
-        self.age = self.generate_random_age()
+
+        if age:
+            self.age = age
+        else:
+            self.age=self.generate_random_age()
+        
         self.gender = self.generate_gender()
         self.status = status
         self.longterm = None  # Intended destination
@@ -53,7 +58,7 @@ class Agent:
         self.country_origin='Mali'
         self.is_stuck=False
         self.been_abroad=False
-        self.is_leader=False
+        self.is_leader=is_leader
         self.in_family=False 
         self.fam_size=1
         self.fam=None
@@ -142,9 +147,11 @@ class Agent:
                     
                     self.group = [x for x in self.fam if x.travelswithfam]
                     self.group= sorted(self.group, key=lambda agent: agent.id)
-                    for agent in self.group:
-                        agent.group=self.group
-                        agent.ingroup=True
+                    
+                    if len(self.group)>1:
+                        for agent in self.group:
+                            agent.group=self.group
+                            agent.ingroup=True
                     
                 else:
                     self.leftfam=True
@@ -207,6 +214,17 @@ class Agent:
         if val==1:
             self.status='Dead'
         
+        if self.is_leader and self.ingroup:
+            max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
+            if max_member:
+                max_member.is_leader=True    
+        
+        agents = self.group
+        for agent in agents:
+            if self in agent.group:
+                agent.group.remove(self)
+
+        
 
 
     def assess_situation_and_move_if_needed(self,G,city,current_date):
@@ -230,9 +248,13 @@ class Agent:
 
 
             if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+
                 
                 for agent in self.group:
                     agent.location=agent.shortterm
+                    if not agent.moving:
+                        agent.moving=True
+                        agent.startdate=current_date
                 if self.location in self.__class__.foreign_cities:
                     new_status = 'Refugee'
                     self.been_abroad = True
@@ -244,7 +266,6 @@ class Agent:
                 for agent in self.group:
                     agent.status = new_status
                     agent.been_abroad = self.been_abroad
-                    
                     agent.traveltime = current_date - agent.startdate
 
                     if self.location == self.longterm:

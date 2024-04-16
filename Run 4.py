@@ -34,6 +34,9 @@ BETA 1
 ~ 2hr
 - clean up code 896-...
 
+~ 2hr
+- Babies should be assigned to a family
+
 
 VISUALISATION:
 - Refugees/IDPs/Returnees distribution
@@ -786,7 +789,8 @@ loc_dic = {'Bamako':bamako,
            'Boundiali':boundiali,
            "Tintane":tintane,
            "Korhogo":korhogo,
-           "Assamakka":assamakka}
+           "Assamakka":assamakka,
+           "Tinzaouaten":tin_zaouaten}
 
 # Locations without an OSMNX are assumed to be within the closest city
 
@@ -803,7 +807,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 10000 # TO VARY
+frac = 500 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -1032,11 +1036,19 @@ for current_date in dates:
     
     if bpd:
         for new_id in range(i,i+birth_rate+1):
-            Agents[i]=Agent(i)
+            Agents[i]=Agent(i,age=0, is_leader=True)
+            total_agents+=1
+            loc_dic[Agents[i].location].addmember(i)
+            ags.append(Agents[i])
+            i+=1
         i+=birth_rate
     else:
         if days%birth_rate==0:
-            Agents[i]=Agent(i)
+            Agents[i]=Agent(i,age=0, is_leader=True)
+            total_agents+=1
+            loc_dic[Agents[i].location].addmember(i)
+            ags.append(Agents[i])
+            i+=1
 
     days+=1
 
