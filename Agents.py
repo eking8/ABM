@@ -2,6 +2,7 @@ import numpy as np
 import random
 import networkx as nx
 from datetime import datetime
+from Visualisations import colors
 
 
 class Agent:
@@ -160,10 +161,12 @@ class Agent:
                         max_member.is_leader=True
                         max_member.group=[x for x in max_member.fam if x.travelswithfam]
                         max_member.group = sorted(max_member.group, key=lambda agent: agent.id)
-                        max_member.ingroup=True
-                        for agent in max_member.group:
-                            agent.group=max_member.group
-                            agent.ingroup=True
+                        if len(max_member.group)>1:
+                            max_member.ingroup=True
+                            for agent in max_member.group:
+                                agent.group=max_member.group
+                                agent.ingroup=True
+
             
             else:
                 if not self.travelswithfam:
@@ -214,15 +217,15 @@ class Agent:
         if val==1:
             self.status='Dead'
         
-        if self.is_leader and self.ingroup:
-            max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
-            if max_member:
-                max_member.is_leader=True    
-        
-        agents = self.group
-        for agent in agents:
-            if self in agent.group:
-                agent.group.remove(self)
+            if self.is_leader and self.ingroup:
+                max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
+                if max_member:
+                    max_member.is_leader=True    
+            
+            agents = self.group
+            for agent in agents:
+                if self in agent.group:
+                    agent.group.remove(self)
 
         
 
@@ -255,6 +258,7 @@ class Agent:
                     if not agent.moving:
                         agent.moving=True
                         agent.startdate=current_date
+
                 if self.location in self.__class__.foreign_cities:
                     new_status = 'Refugee'
                     self.been_abroad = True
@@ -281,7 +285,7 @@ class Agent:
                         # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
                     
             
-
+                
                 destination_dict = None
 
                 if self.capitalbracket == 'Rich':
@@ -296,14 +300,16 @@ class Agent:
 
                 if destination_dict:
                     key = self.roulette_select(destination_dict,iscamp)
+                    
                     if key:
                         for agent in self.group:
                             agent.distanceleft = destination_dict[key]['distance']
                             agent.longterm = key
                             agent.shortterm = destination_dict[key]['path'][0]
+                
                             # Debugging print statements can be uncommented for additional logs
-                            # print("location = " + self.location + ", and short term = " + str(self.shortterm))
-                            # print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
+                            print("location = " + self.location + ", and short term = " + str(self.shortterm))
+                            print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
                 else:
                     for agent in self.group:
                         agent.is_stuck = True

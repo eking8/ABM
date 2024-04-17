@@ -807,7 +807,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 500 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -998,17 +998,21 @@ for current_date in dates:
         
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
 
-        if Agents[id].moving:
+        if Agents[id].moving and Agents[id].status!= 'Dead':
             
-            # print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
-            #      + " to " + str(loc_dic[Agents[id].shortterm].name))
-            #if Agents[id].is_leader:
-            #    if Agents[id].leftfam or len(Agents[id].group)==1:
-            #        print(colors.YELLOW + "Solo" + colors.END)
-            #    else:
-            #        print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
-            #else:
-            #    print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
+            print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
+                 + " to " + str(loc_dic[Agents[id].shortterm].name) + "... status: " + str(Agents[id].status))
+            print("I'm stuck: " + str(Agents[id].is_stuck))
+            print("I'm leader: " + str(Agents[id].is_leader))
+            print("Moving: " + str(Agents[id].moving))
+            print("In group: " + str(Agents[id].ingroup))
+            if Agents[id].is_leader:
+                if Agents[id].leftfam or len(Agents[id].group)==1:
+                    print(colors.YELLOW + "Solo" + str([x.id for x in Agents[id].group]) + colors.END)
+                else:
+                    print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
+            else:
+                print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
             
             # print(str(loc_dic[Agents[id].location].name) + " before : " +str(loc_dic[Agents[id].location].members))
             # print(str(loc_dic[Agents[id].shortterm].name) + " before : " +str(loc_dic[Agents[id].shortterm].members))
@@ -1018,7 +1022,7 @@ for current_date in dates:
 
             # print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
             # print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
-            # print("\n")
+            print("\n")
             
             G.nodes[Agents[id].location]['population'] -= 1 # update nodes
             G.nodes[Agents[id].shortterm]['population'] += 1
@@ -1098,6 +1102,7 @@ end_time = time.time()
 
 elapsed_time = end_time - start_time
 
+print('\n')
 print(f"Simulation completed in {elapsed_time:.2f} seconds.")
 
 """
