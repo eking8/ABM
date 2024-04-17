@@ -3,6 +3,7 @@ import random
 import networkx as nx
 from datetime import datetime
 from Visualisations import colors
+import math as math
 
 
 class Agent:
@@ -77,6 +78,7 @@ class Agent:
         self.checked=False
         self.leftfam=False
         self.familiar={}
+        self.distance_traveled_since_rest=0
         
 
         if rand_n>0.9965: # capital 100000
@@ -234,86 +236,95 @@ class Agent:
         
         
         if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
-            self.merged = False
-
             
-            if city.hasconflict and city.fatalities > self.threshold:
-                for agent in self.group:
-                    agent.nogos.update(city.name)
-                    if agent.status == 'Resident':
-                                
-                            agent.moving = True
-                            agent.status = 'Fleeing from conflict'
-                            # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
-                            agent.startdate=current_date
-                            
-                                
-
-
-            if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
-
-                
-                for agent in self.group:
-                    agent.location=agent.shortterm
-                    if not agent.moving:
-                        agent.moving=True
-                        agent.startdate=current_date
-
-                if self.location in self.__class__.foreign_cities:
-                    new_status = 'Refugee'
-                    self.been_abroad = True
-                elif self.been_abroad:
-                    new_status = 'Returnee'
-                else:
-                    new_status = 'IDP'
-
-                for agent in self.group:
-                    agent.status = new_status
-                    agent.been_abroad = self.been_abroad
-                    agent.traveltime = current_date - agent.startdate
-
-                    if self.location == self.longterm:
-                        agent.moving = False
-                        agent.enddate = current_date
-                        
-                        if self.capitalbracket == 'Rich':
-                            agent.location = 'Abroad'
-                            agent.been_abroad = True
-
-                        # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
-                        
-                        # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
-                    
+            rest_prob = 1-math.exp(-self.distance_traveled*(current_date-city.last_conflict_date)/36500)
             
-                
-                destination_dict = None
+            if random.random()>rest_prob:
+                self.merged = False
 
-                if self.capitalbracket == 'Rich':
-                    destination_dict = find_nearest_cities_with_airport(G, self.location, self.speed, self.nogos)
-                    iscamp=False
-                elif self.capitalbracket == 'Mid':
-                    destination_dict = find_shortest_paths_to_neighboring_countries(G, self.location, self.speed, current_date, self.nogos)
-                    iscamp=False
-                else:
-                    destination_dict = camp_paths(G, self.location, self.speed, current_date, self.nogos)
-                    iscamp=True
-
-                if destination_dict:
-                    key = self.roulette_select(destination_dict,iscamp)
-                    
-                    if key:
-                        for agent in self.group:
-                            agent.distanceleft = destination_dict[key]['distance']
-                            agent.longterm = key
-                            agent.shortterm = destination_dict[key]['path'][0]
                 
-                            # Debugging print statements can be uncommented for additional logs
-                            print("location = " + self.location + ", and short term = " + str(self.shortterm))
-                            print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
-                else:
+                if city.hasconflict and city.fatalities > self.threshold:
                     for agent in self.group:
-                        agent.is_stuck = True
-                        agent.moving = False
+                        agent.nogos.update(city.name)
+                        if agent.status == 'Resident':
+                                    
+                                agent.moving = True
+                                agent.status = 'Fleeing from conflict'
+                                # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
+                                agent.startdate=current_date
+                                
+                                    
+
+
+                if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+
+                    
+                    for agent in self.group:
+                        agent.distance_traveled_since_rest+=G[agent.location][agent.shortterm]['distance']
+                        agent.location=agent.shortterm
+                        if not agent.moving:
+                            agent.moving=True
+                            agent.startdate=current_date
+
+                    if self.location in self.__class__.foreign_cities:
+                        new_status = 'Refugee'
+                        self.been_abroad = True
+                    elif self.been_abroad:
+                        new_status = 'Returnee'
+                    else:
+                        new_status = 'IDP'
+
+                    for agent in self.group:
+                        agent.status = new_status
+                        agent.been_abroad = self.been_abroad
+                        agent.traveltime = current_date - agent.startdate
+
+                        if self.location == self.longterm:
+                            agent.moving = False
+                            agent.enddate = current_date
+                            
+                            if self.capitalbracket == 'Rich':
+                                agent.location = 'Abroad'
+                                agent.been_abroad = True
+
+                            # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
+                            
+                            # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
+                        
+                
+                    
+                    destination_dict = None
+
+                    if self.capitalbracket == 'Rich':
+                        destination_dict = find_nearest_cities_with_airport(G, self.location, self.speed, self.nogos)
+                        iscamp=False
+                    elif self.capitalbracket == 'Mid':
+                        destination_dict = find_shortest_paths_to_neighboring_countries(G, self.location, self.speed, current_date, self.nogos)
+                        iscamp=False
+                    else:
+                        destination_dict = camp_paths(G, self.location, self.speed, current_date, self.nogos)
+                        iscamp=True
+
+                    if destination_dict:
+                        key = self.roulette_select(destination_dict,iscamp)
+                        
+                        if key:
+                            for agent in self.group:
+                                agent.distanceleft = destination_dict[key]['distance']
+                                agent.longterm = key
+                                agent.shortterm = destination_dict[key]['path'][0]
+                    
+                                # Debugging print statements can be uncommented for additional logs
+                                print("location = " + self.location + ", and short term = " + str(self.shortterm))
+                                print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
+                    else:
+                        for agent in self.group:
+                            agent.is_stuck = True
+                            agent.moving = False
+
+
+            else:
+                self.distance_traveled_since_rest=0 # reset after rest
                     
     
     def merge_nogo_lists(self, all_agents):
