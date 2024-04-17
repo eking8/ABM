@@ -18,6 +18,7 @@ class Location:
         self.hasconflict = False
         self.fatalities=0 # initially
         self.members=[]
+        self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulationm
 
     # find lat and long of location
         
@@ -85,7 +86,6 @@ class City(Location):
         self.hasairport = hasairport
         self.iscity = True # by definition
         self.iscamp = False # by definition
-        self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulationm
         self.top20 = top20 # if has top 20 population
 
     def in_city_conflict(self, fatalities, current_date):

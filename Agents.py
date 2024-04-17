@@ -79,6 +79,7 @@ class Agent:
         self.leftfam=False
         self.familiar={}
         self.distance_traveled_since_rest=0
+        self.moved_today=False
         
 
         if rand_n>0.9965: # capital 100000
@@ -218,6 +219,7 @@ class Agent:
         val = random.randint(1, frac)
         if val==1:
             self.status='Dead'
+            self.location = 'Dead'
         
             if self.is_leader and self.ingroup:
                 max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
@@ -237,30 +239,38 @@ class Agent:
         
         if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
             
-            rest_prob = 1-math.exp(-self.distance_traveled*(current_date-city.last_conflict_date)/36500)
             
-            if random.random()>rest_prob:
-                self.merged = False
+            self.merged = False
 
                 
-                if city.hasconflict and city.fatalities > self.threshold:
-                    for agent in self.group:
-                        agent.nogos.update(city.name)
-                        if agent.status == 'Resident':
-                                    
-                                agent.moving = True
-                                agent.status = 'Fleeing from conflict'
-                                # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
-                                agent.startdate=current_date
+            if city.hasconflict and city.fatalities > self.threshold:
+                for agent in self.group:
+                    agent.nogos.update(city.name)
+                    if agent.status == 'Resident':
+                            
+                            agent.moving = True
+                            agent.status = 'Fleeing from conflict'
+                            # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
+                            agent.startdate=current_date
                                 
                                     
 
 
-                if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+            if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+                
+                if city.last_conflict_date:
+                    cooldown=(current_date-city.last_conflict_date).days
+                else:
+                    cooldown=69 # 50/50 chance of moving on
 
+                rest_prob = 1-math.exp(-self.distance_traveled_since_rest*cooldown/36500)
+            
+                if random.random()>rest_prob:
+
+                    self.moved_today=True
                     
                     for agent in self.group:
-                        agent.distance_traveled_since_rest+=G[agent.location][agent.shortterm]['distance']
+                        agent.distance_traveled_since_rest+=nx.shortest_path_length(G, agent.location, agent.shortterm, weight='weight')
                         agent.location=agent.shortterm
                         if not agent.moving:
                             agent.moving=True
@@ -286,6 +296,7 @@ class Agent:
                             if self.capitalbracket == 'Rich':
                                 agent.location = 'Abroad'
                                 agent.been_abroad = True
+                                self.status='International Refugee'
 
                             # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                             
@@ -315,16 +326,17 @@ class Agent:
                                 agent.shortterm = destination_dict[key]['path'][0]
                     
                                 # Debugging print statements can be uncommented for additional logs
-                                print("location = " + self.location + ", and short term = " + str(self.shortterm))
-                                print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
+                                #print("location = " + self.location + ", and short term = " + str(self.shortterm))
+                                #print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
                     else:
                         for agent in self.group:
                             agent.is_stuck = True
                             agent.moving = False
+                            agent.moved_today= False
 
 
-            else:
-                self.distance_traveled_since_rest=0 # reset after rest
+                else:
+                    self.distance_traveled_since_rest=0 # reset after rest
                     
     
     def merge_nogo_lists(self, all_agents):

@@ -13,13 +13,12 @@ BETA 1
 --- Conclusion
 - Implement in code
 
-~5hr
+~10hr
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
 
-~4hr
-- Agent birth mechanisms
-- Empirically derive births
+~ 1hr
+- Turning around
 
 ~2hr
 - Incorporate average times at different nodes
@@ -36,6 +35,9 @@ BETA 1
 
 ~ 2hr
 - Babies should be assigned to a family
+
+~ 3hr
+- Exploring nodes indirectly
 
 
 VISUALISATION:
@@ -773,6 +775,7 @@ loc_dic = {'Bamako':bamako,
            'Bengassi':bengassi,
            'Kéniéba':kenieba,
            'Abroad':None,
+           'Dead':None,
            'Kedougou':kedougou,
            'Siguiri':siguiri,
            'Dinguiraye':dinguiraye,
@@ -807,7 +810,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 1000 # TO VARY
+frac = 100 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -998,36 +1001,52 @@ for current_date in dates:
         
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
 
-        if Agents[id].moving and Agents[id].status!= 'Dead':
+        if Agents[id].moved_today:
             
-            print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
-                 + " to " + str(loc_dic[Agents[id].shortterm].name) + "... status: " + str(Agents[id].status))
-            print("I'm stuck: " + str(Agents[id].is_stuck))
-            print("I'm leader: " + str(Agents[id].is_leader))
-            print("Moving: " + str(Agents[id].moving))
-            print("In group: " + str(Agents[id].ingroup))
-            if Agents[id].is_leader:
-                if Agents[id].leftfam or len(Agents[id].group)==1:
-                    print(colors.YELLOW + "Solo" + str([x.id for x in Agents[id].group]) + colors.END)
-                else:
-                    print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
-            else:
-                print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
+            # print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
+            #     + " to " + str(loc_dic[Agents[id].shortterm].name) + "... status: " + str(Agents[id].status))
+            #print("I'm stuck: " + str(Agents[id].is_stuck))
+            #print("I'm leader: " + str(Agents[id].is_leader))
+            #print("Moving: " + str(Agents[id].moving))
+            #print("In group: " + str(Agents[id].ingroup))
+            #if Agents[id].is_leader:
+            #    if Agents[id].leftfam or len(Agents[id].group)==1:
+            #        print(colors.YELLOW + "Solo" + str([x.id for x in Agents[id].group]) + colors.END)
+            #    else:
+            #        print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
+            #else:
+            #    print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
             
-            # print(str(loc_dic[Agents[id].location].name) + " before : " +str(loc_dic[Agents[id].location].members))
-            # print(str(loc_dic[Agents[id].shortterm].name) + " before : " +str(loc_dic[Agents[id].shortterm].members))
+            #print(str(loc_dic[Agents[id].location].name) + " before : " +str(loc_dic[Agents[id].location].members))
+            #print(str(loc_dic[Agents[id].shortterm].name) + " before : " +str(loc_dic[Agents[id].shortterm].members))
 
+            
+                
+            
+            
             loc_dic[Agents[id].shortterm].addmember(id)
-            loc_dic[Agents[id].location].removemember(id)
 
-            # print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
-            # print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
-            print("\n")
+            try:
+                loc_dic[Agents[id].location].removemember(id)
+            except:
+                print(Agents[id].status)
+                print(Agents[id].is_stuck)
+                print(Agents[id].group)
+                print(Agents[id].is_leader)
+                print(Agents[id].ingroup)
+                print(Agents[id].location)
+                loc_dic[Agents[id].location].removemember(id)
+
+            #print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
+            #print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
+            #print("\n")
             
             G.nodes[Agents[id].location]['population'] -= 1 # update nodes
             G.nodes[Agents[id].shortterm]['population'] += 1
             if not Agents[id].merged:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
+            
+            Agents[id].moved_today=False
 
         
 
