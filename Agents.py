@@ -392,7 +392,7 @@ class Agent:
         b = 50 # bias assumed to be 50 
 
         if iscamp:
-            c = 1/2000
+            c = 1/200
         else:
             c=0
         

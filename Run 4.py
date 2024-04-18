@@ -683,7 +683,7 @@ nema.add_connection(tombouctou)
 
 # Calculate the number of days in 2012
 start_date = pd.to_datetime('2012-01-01')
-end_date = pd.to_datetime('2012-12-31')
+end_date = pd.to_datetime('2013-01-01')
 dates = pd.date_range(start_date, end_date)
 
 conflicts = pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")[
@@ -810,7 +810,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 100 # TO VARY
+frac = 500 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
