@@ -18,7 +18,8 @@ class Location:
         self.hasconflict = False
         self.fatalities=0 # initially
         self.members=[]
-        self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulationm
+        self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulation
+        self.waited_days=0
 
     # find lat and long of location
         

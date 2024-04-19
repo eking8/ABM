@@ -11,50 +11,51 @@ BETA 1
 --- Parallelism
 --- Compilation
 --- Conclusion
-- Implement in code
 
-~10hr
+~ 4hr (Visualisation update)
+- Visualise distribution of refugees/IDPs/returnees
+- Incorporate average times at different nodes
+
+
+~10hr (Strategic grouping update)
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
 
-~ 1hr
-- Turning around
+~ 20hr (Improved logic update)
+- Store direction moving inTurning around
+- Leaving camps when foreign conflict
+- Leaving camp with indirect conflicts
+- Reassess score after x days
+- Exploring nodes indirectly
+- Include wait time as a positive for waiting at  node
 
-~2hr
-- Incorporate average times at different nodes
 
-~3hr
+~3hr (Empirical improvement update)
 - Foreign conflicts
 
-~4hr
-- Leaving camps??
-- Reassess score after x days
-
-~ 2hr
+~ 3hr (Speed and simplicity update)
 - clean up code 896-...
+- employ optimisation techniques
 
-~ 2hr
+~ 2hr (Group formation update)
 - Babies should be assigned to a family
 
-~ 3hr
-- Exploring nodes indirectly
+~ 9hr (Further agent logic update)
+- Link frequency (4hr)
+- Destination node danger (2hr)
+- Danger of current node stored as well as nogos (1hr)
+- Danger of indirect nodes stored (1hr)
+- Indirect node danger included (1hr)
 
+~ 7hr(Communication update)
+- Danger of nodes (directly visited) communicated (2hr)
+- Quick revision of routes and rumours (2hr)
+- Contact list stored alongside nogos and danger (1hr)
+- Agent notified if contact makes it to another country/camp (1hr)
+- Contacts in other camps can influence camp utility (1hr)
 
-VISUALISATION:
-- Refugees/IDPs/Returnees distribution
+~?  (Validation update)
 
-SCORE BASED ON:
-- Destination node distance EASY
-- How frequent the link is travelled HARD (Extend familiarity to transition nodes?)
-- Destination node danger HARD
-- First node in path danger HARD
-
-
-
-COMMUNICATION
-- Don't focus as much on the knowledge of routes and settlements
-- Focus on the perception of danger
-- i.e. an agent communicating with another agent about a dange level of node/link
 """
 
 import matplotlib.pyplot as plt
@@ -810,7 +811,7 @@ start_time = time.time()
 total_population = total_pop(cities)
 
 #########################################################################################
-frac = 500 # TO VARY
+frac = 5000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -882,6 +883,8 @@ else:
 print(birth_rate)
 
 populations = {camp.name: [] for camp in camps}
+countries = {x:[] for x in ['Burkina Faso','Côte D\'Ivoire','Guinea','Mauritania','Niger','Senegal','Mali','Other','Dead']}
+statuses = {x:[] for x in ['Dead','IDP','Returnee','Refugee','Resident','Fleeing from conflict']}
 
 total_agents = len(Agents)
 
@@ -996,7 +999,22 @@ for current_date in dates:
     # draw_graph(G, current_date,ongoing_conflicts)
 
     # print(colors.PURPLE, "current conflicts",[con.name for con in ongoing_conflicts], colors.END)
-    
+    refugees=0
+    returnees=0
+    idps=0
+    deaths=0
+    residents=0
+    fleeing=0
+
+    Burkinas=0
+    Cotes = 0
+    Guineas = 0
+    Maus = 0
+    Nigers = 0
+    Senegals = 0
+    Malis = 0
+    Others = 0
+
     for id in Agents:
         
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
@@ -1047,15 +1065,69 @@ for current_date in dates:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
             Agents[id].moved_today=False
+        if Agents[id].status!='Dead' or Agents[id].location != 'Abroad':
+            country = loc_dic[Agents[id].location].country
+        else:
+            country=None
 
+        if Agents[id].status == 'Refugee':
+            refugees+=frac
+            if country == 'Burkina Faso':
+                Burkinas+=frac
+            elif country == 'Coete D\'Ivoire':
+                Cotes +=frac
+            elif country == 'Guinea':
+                Guineas +=frac
+            elif country == 'Mauritania':
+                Maus +=frac
+            elif country == 'Niger':
+                Nigers +=frac
+            elif country == 'Senegal':
+                Senegals +=frac
+            elif Agents[id].location=='Abroad':
+                Others += frac
+
+    
+        elif Agents[id].status == 'Returnee':
+            returnees+=frac
+            Malis+=frac
+        elif Agents[id].status == 'Resident':
+            residents+=frac
+            Malis+=frac
+        elif Agents[id].status == 'Dead':
+            deaths+=frac
+        elif Agents[id].status == 'IDP':
+            idps+=frac
+            Malis+=frac
+        else:
+            fleeing+=1
+            Malis+=1
         
-
         processed_agents += 1  # Update the counter after processing each agent
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)
 
     for camp in camps:
         pop=camp.population*frac
         populations[camp.name].append(pop)
+
+    statuses['Refugee'].append(refugees)
+    statuses['Returnee'].append(returnees)
+    statuses['Resident'].append(residents)
+    statuses['Dead'].append(deaths)
+    statuses['IDP'].append(idps)
+    statuses['Fleeing from conflict'].append(fleeing)
+
+    countries['Burkina Faso'].append(Burkinas)
+    countries['Côte D\'Ivoire'].append(Cotes)
+    countries['Guinea'].append(Guineas)
+    countries['Mauritania'].append(Maus)
+    countries['Niger'].append(Nigers)
+    countries['Senegal'].append(Senegals)
+    countries['Mali'].append(Malis)
+    countries['Other'].append(Others)
+    countries['Dead'].append(deaths)
+    
+    
     
     if bpd:
         for new_id in range(i,i+birth_rate+1):
@@ -1100,9 +1172,11 @@ for i in range(0, n_camps, camps_per_figure):
     plt.tight_layout()
     plt.show()
 
-csv_file = 'Simulated_pop_data.csv'
+csv_file = 'Camp_splits.csv'
 
 populations['Date']=dates
+statuses['Date']=dates
+countries['Date']=dates
 
 # Write the dictionary to a CSV file
 with open(csv_file, 'w', newline='') as file:
@@ -1169,3 +1243,30 @@ for id in Agents:
         print(colors.RED + Agents[id].location + colors.END)
 """
 # draw_graph(G, current_date, distances_on=True)
+
+csv_file2= 'Status_splits.csv'
+
+
+with open(csv_file2, 'w', newline='') as file:
+    writer = csv.DictWriter(file, fieldnames=statuses.keys())
+    
+    # Write header
+    writer.writeheader()
+    
+    # Write data row
+    for i in range(len(statuses['Date'])):
+        row = {key: statuses[key][i] for key in statuses.keys()}
+        writer.writerow(row)
+
+csv_file3= 'Country_split_refugees.csv'
+
+with open(csv_file3, 'w', newline='') as file:
+    writer = csv.DictWriter(file, fieldnames=countries.keys())
+    
+    # Write header
+    writer.writeheader()
+    
+    # Write data row
+    for i in range(len(countries['Date'])):
+        row = {key: countries[key][i] for key in countries.keys()}
+        writer.writerow(row)

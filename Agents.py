@@ -333,12 +333,14 @@ class Agent:
                             agent.is_stuck = True
                             agent.moving = False
                             agent.moved_today= False
+                            
 
 
                 else:
                     self.distance_traveled_since_rest=0 # reset after rest
-                    
-    
+                    city.waited_days+=len(self.group)
+
+
     def merge_nogo_lists(self, all_agents):
         """
         This method allows an agent to merge their 'nogos' set with those of 0-3 other agents in the same city.
