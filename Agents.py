@@ -80,6 +80,7 @@ class Agent:
         self.familiar={}
         self.distance_traveled_since_rest=0
         self.moved_today=False
+        self.direction=None
         
 
         if rand_n>0.9965: # capital 100000
@@ -317,7 +318,7 @@ class Agent:
                         iscamp=True
 
                     if destination_dict:
-                        key = self.roulette_select(destination_dict,iscamp)
+                        key = self.roulette_select(G,city.name,destination_dict,iscamp)
                         
                         if key:
                             for agent in self.group:
@@ -374,14 +375,32 @@ class Agent:
 
 
     
-    def roulette_select(self, distances,iscamp):
+    def roulette_select(self,G,startnode, distances,iscamp):
         """
         Select a key from the distances dictionary using roulette method,
-        where scores are computed as `familiar - a * distance + b - c * population`.
+        where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction)'
+
+        The agents have a utility to:
+        - Familiarity
+        - Directions similar to the current one (more likely to stick out for the long term)
+        
+        The agents have a disutility to:
+        - Large distances
+        - Overpopulated camps
+        - Directions opposite to current one (less likely to circle around)
 
         :param distances: Dictionary of {key: {'distance': value}}
         :return: Selected key based on roulette selection
         """
+
+        bearings={}
+
+        
+        for key in distances:
+            if self.direction:
+                bearings[key]=self.direction-G.get_edge_data(startnode, distances[key]['path'][0])['bearing']
+            else:
+                bearings[key]=0
 
         if distances is None:
             print('No routes')
@@ -392,6 +411,7 @@ class Agent:
 
         a = self.age/1000 
         b = 50 # bias assumed to be 50 
+        d = 50 # needs to be derived with more detail
 
         if iscamp:
             c = 1/200
@@ -399,7 +419,7 @@ class Agent:
             c=0
         
         # Compute scores using familiarity and distance
-        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] for key in distances}
+        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] + math.cos(bearings[key]/2) for key in distances}
         
         # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
         total_score_sum = sum(max(score, 0) for score in scores.values())
@@ -426,6 +446,31 @@ class Agent:
                 
         # In case of rounding errors, return the last key
         return keys_sorted[-1]
+    
+    def indirect_check(self, G, start_node,current_date):
+        
+        if G.nodes[start_node].get('is_camp',False):
+
+            for neighbor in G.neighbors(start_node):
+                
+                if G.nodes[neighbor].get('has_conflict', False):
+                    for agent in self.group:
+                        agent.nogos.add(G.nodes[neighbor].get('name', neighbor))
+                        agent.nogos.add(G.nodes[start_node].get('name', start_node))
+                        agent.moving=True
+                        agent.startdate=current_date
+                    break
+
+        else:
+
+            for neighbor in G.neighbors(start_node):
+                
+                if G.nodes[neighbor].get('has_conflict', False):
+                    for agent in self.group:
+                        agent.nogos.add(G.nodes[neighbor].get('name', neighbor))
+                
+
+
             
             
 

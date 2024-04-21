@@ -2,9 +2,10 @@
 
 TO DO
 
-~10hr (Strategic grouping update)
+~20hr (Strategic grouping update)
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
+- Leaving family?
 
 ~ 20hr (Improved logic update)
 - Leaving camps when foreign conflict
@@ -42,8 +43,9 @@ TO DO
 
 ~?  (Validation update)
 
-BUGS
+COMMON BUGS
 - Not in XX bug
+- Bar only completing to 99.8%
 
 """
 
@@ -1007,6 +1009,9 @@ for current_date in dates:
     for id in Agents:
         
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
+
+        if Agents[id].status != 'Dead' and Agents[id].is_leader:
+            Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
 
         if Agents[id].moved_today:
             
