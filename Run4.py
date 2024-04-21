@@ -7,7 +7,6 @@ TO DO
 - Logic for reassessing at each node the group
 
 ~ 20hr (Improved logic update)
-- Store direction moving inTurning around
 - Leaving camps when foreign conflict
 - Leaving camp with indirect conflicts
 - Reassess score after x days

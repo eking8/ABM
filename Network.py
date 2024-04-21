@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import networkx as nx
+import math
 
 def create_graph(locations):
 
@@ -24,7 +25,8 @@ def create_graph(locations):
         
         # Add edges with border crossing information
         for conn in loc.connections:
-            G.add_edge(loc.name, conn['location'].name, weight=round(conn['distance'],3), crosses_border=conn['crosses_border'])
+            bearing = calculate_bearing(loc.latitude, loc.longitude, conn['location'].latitude, conn['location'].longitude)
+            G.add_edge(loc.name, conn['location'].name, weight=round(conn['distance'], 3), crosses_border=conn['crosses_border'], bearing=bearing)
 
     # print("Graph initialised.")
     
@@ -126,3 +128,33 @@ def find_accessible_nodes_within_distance(G, start_node, max_distance_km):
         return None
     
     return accessible_nodes
+
+def calculate_bearing(start_lat, start_lon, end_lat, end_lon):
+    """
+    Calculates the bearing between two points in radians.
+    The formula used is the following:
+    θ = atan2(sin(Δlong) * cos(lat2),
+              cos(lat1) * sin(lat2) − sin(lat1) * cos(lat2) * cos(Δlong))
+    Returns:
+    Bearing in radians from the north, ranging from 0 to 2π.
+    """
+    # Convert degrees to radians
+    start_lat_rad = math.radians(start_lat)
+    start_lon_rad = math.radians(start_lon)
+    end_lat_rad = math.radians(end_lat)
+    end_lon_rad = math.radians(end_lon)
+
+    # Calculate delta longitude
+    delta_lon = end_lon_rad - start_lon_rad
+
+    # Calculate trigonometric components
+    x = math.sin(delta_lon) * math.cos(end_lat_rad)
+    y = math.cos(start_lat_rad) * math.sin(end_lat_rad) - math.sin(start_lat_rad) * math.cos(end_lat_rad) * math.cos(delta_lon)
+
+    # Calculate initial bearing in radians from -π to +π
+    initial_bearing = math.atan2(x, y)
+
+    # Normalize the initial bearing to 0 to 2π radians
+    compass_bearing = initial_bearing if initial_bearing >= 0 else initial_bearing + 2 * math.pi
+
+    return compass_bearing
