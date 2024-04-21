@@ -261,6 +261,8 @@ class Agent:
                 
                 if city.last_conflict_date:
                     cooldown=(current_date-city.last_conflict_date).days
+                    add = city.waited_days/1000000
+                    cooldown*=(1+add)
                 else:
                     cooldown=69 # 50/50 chance of moving on
 

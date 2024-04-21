@@ -7,12 +7,10 @@ TO DO
 - Logic for reassessing at each node the group
 - Leaving family?
 
-~ 20hr (Improved logic update)
+~ 10hr (Improved logic update)
 - Leaving camps when foreign conflict
-- Leaving camp with indirect conflicts
 - Reassess score after x days
-- Exploring nodes indirectly
-- Include wait time as a positive for waiting at  node
+- Include wait time as a positive for waiting at node
 
 
 ~3hr (Empirical improvement update)
@@ -1010,7 +1008,7 @@ for current_date in dates:
         
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
 
-        if Agents[id].status != 'Dead' and Agents[id].is_leader:
+        if Agents[id].status != 'Dead' and Agents[id].is_leader and Agents[id].location != 'Abroad':
             Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
 
         if Agents[id].moved_today:
