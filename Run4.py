@@ -2,21 +2,6 @@
 
 TO DO
 
-BETA 1
-
-~2hr
-- Course on optimisation:
---- Optimising Loops
---- NumPy
---- Parallelism
---- Compilation
---- Conclusion
-
-~ 4hr (Visualisation update)
-- Visualise distribution of refugees/IDPs/returnees
-- Incorporate average times at different nodes
-
-
 ~10hr (Strategic grouping update)
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
@@ -33,8 +18,10 @@ BETA 1
 ~3hr (Empirical improvement update)
 - Foreign conflicts
 
-~ 3hr (Speed and simplicity update)
+~ 5hr (Speed and simplicity update)
 - clean up code 896-...
+- RUn through and find the slowest bits of the code
+- COme up with a list of optimisation techniques (I.e. using Numpy on certain lists)
 - employ optimisation techniques
 
 ~ 2hr (Group formation update)
@@ -55,6 +42,9 @@ BETA 1
 - Contacts in other camps can influence camp utility (1hr)
 
 ~?  (Validation update)
+
+BUGS
+- Not in XX bug
 
 """
 
