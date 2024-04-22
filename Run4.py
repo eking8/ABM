@@ -2,19 +2,17 @@
 
 TO DO
 
+
 ~20hr (Strategic grouping update)
 - Consider group size distributions and begin to model stategic groups
 - Logic for reassessing at each node the group
 - Leaving family?
 
-~ 10hr (Improved logic update)
-- Leaving camps when foreign conflict
-- Reassess score after x days
-- Include wait time as a positive for waiting at node
-
 
 ~3hr (Empirical improvement update)
 - Foreign conflicts
+- Leaving camps when foreign conflict
+- Reassess score after x days
 
 ~ 5hr (Speed and simplicity update)
 - clean up code 896-...
@@ -40,6 +38,9 @@ TO DO
 - Contacts in other camps can influence camp utility (1hr)
 
 ~?  (Validation update)
+- Errors in output
+- Find a way to apply the validation technique of upsising from flee 
+
 
 COMMON BUGS
 - Not in XX bug
@@ -56,6 +57,7 @@ from Locations import City, Camp, total_pop
 from Agents import Agent, deathmech
 from Network import create_graph, draw_graph
 from Visualisations import colors, print_progress_bar
+from datetime import datetime
 
 # populations from 2009 census https://www.citypopulation.de/en/mali/cities/
 
@@ -171,11 +173,11 @@ bobo = Camp("Bobo", "Burkina Faso", population=0) # 2012-02-29
 goudoubo = Camp("Goudoubo", "Burkina Faso",population=0) # 2012-02-29
 mentao = Camp("Mentao", "Burkina Faso", population=0) # 2012-02-29
 ouagadougou = Camp("Ouagadougou", "Burkina Faso", population=0) # 2012-02-29
-fassala = Camp("Fassala", "Mauritania", population= 17790) # 2012-02-29
+fassala = Camp("Fassala", "Mauritania", population= 20000) # 2012-02-29
 mbera = Camp("Mbera", "Mauritania", population=0) # 2012-02-29
-abala = Camp("Abala", "Niger", population=1175) # 2012-02-29
+abala = Camp("Abala", "Niger", population=1881) # 2012-02-29
 intikane = Camp("Intikane", "Niger", population=5058) # 2013-05-07
-mangaize = Camp("Mangaize", "Niger", population=1110) # 2012-02-29
+mangaize = Camp("Mangaize", "Niger", population=1140) # 2012-02-29
 niamey = Camp("Niamey", "Niger", population=0) # 2012-02-29
 tabareybarey = Camp("Tabareybarey", "Niger", population=0) # 2012-02-29
 
@@ -797,10 +799,10 @@ start_time = time.time()
 
 
 
-total_population = total_pop(cities)
+total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 5000 # TO VARY
+frac = 300 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -823,7 +825,7 @@ ongoing_conflicts = []
 
 Agent.calculate_distributions()
 Agent.initialise_cities(foreign_cities)
-Agent.initialise_populations(cities,total_population)
+Agent.initialise_populations(cities+camps,total_population)
 
 Agents = {}
 ags = []
@@ -892,6 +894,27 @@ for current_date in dates:
         
     print("\n")
     print(f"Simulating day: {current_date.strftime('%Y-%m-%d')}")
+
+    if current_date==datetime(2012, 3, 19).date():
+        fassala.is_open=False
+        fassala.iscamp=False
+        for id in fassala.members:
+            Agents[id].moving = True
+            Agents[id].status = 'Fleeing from conflict'
+            Agents[id].startdate=current_date
+            Agents[id].longterm=None
+            Agents[id].distance_traveled_since_rest=0
+    elif current_date>datetime(2012, 3, 19).date():
+        for id in fassala.members:
+            Agents[id].moving = True
+            Agents[id].status = 'Fleeing from conflict'
+            Agents[id].startdate=current_date
+            Agents[id].longterm=None
+            Agents[id].shortterm=None
+            Agents[id].distance_traveled_since_rest=0
+
+        
+
 
     for ongoing_conflict in ongoing_conflicts:
         ongoing_conflict.check_and_update_conflict_status(current_date) # check ongoing conflicts
@@ -1057,8 +1080,12 @@ for current_date in dates:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
             Agents[id].moved_today=False
-        if Agents[id].status!='Dead' or Agents[id].location != 'Abroad':
-            country = loc_dic[Agents[id].location].country
+        if Agents[id].status!='Dead' and Agents[id].location != 'Abroad':
+            try:
+                country = loc_dic[Agents[id].location].country
+            except:
+                print(Agents[id].location)
+                country = loc_dic[Agents[id].location].country
         else:
             country=None
 

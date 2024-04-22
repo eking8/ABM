@@ -1,9 +1,10 @@
-import numpy as np
+import networkx as nx
 import osmnx as ox
 from datetime import timedelta
 from functools import lru_cache
 import math
 import sys
+
 
 # store as cache to improve speed on repeated use...
 
@@ -20,6 +21,7 @@ class Location:
         self.members=[]
         self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulation
         self.waited_days=0
+        self.is_open = True
 
     # find lat and long of location
         
@@ -128,6 +130,9 @@ class Camp(Location):
         self.hasairport = False # by definition
         self.iscity = False # by definition
         self.iscamp = True # by definition
+        
+
+        
 
     
 

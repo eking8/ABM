@@ -15,9 +15,11 @@ class Agent:
     cumulative_distribution = []
 
     @classmethod
-    def initialise_populations(cls,cities,total_population):
+    def initialise_populations(cls,locations,total_population):
 
-        cls.city_probabilities = {city.name: city.population / total_population for city in cities}
+
+
+        cls.city_probabilities = {location.name: location.population / total_population for location in locations}
         prob_values = list(cls.city_probabilities.values())
 
         # Normalize the probabilities
@@ -253,6 +255,7 @@ class Agent:
                             agent.status = 'Fleeing from conflict'
                             # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
                             agent.startdate=current_date
+                            agent.distance_traveled_since_rest=0
                                 
                                     
 
@@ -261,14 +264,14 @@ class Agent:
                 
                 if city.last_conflict_date:
                     cooldown=(current_date-city.last_conflict_date).days
-                    add = city.waited_days/1000000
+                    add = city.waited_days/1000
                     cooldown*=(1+add)
                 else:
-                    cooldown=69 # 50/50 chance of moving on
+                    cooldown=22 # 1/3 chance of moving on 100km walked
 
-                rest_prob = 1-math.exp(-self.distance_traveled_since_rest*cooldown/36500)
+                rest_prob = 1-math.exp(-(self.distance_traveled_since_rest+100)*cooldown/3300) # at 14 days after conflict, 200km walked, and 10 people stopping should be 1/3 chance of moving
             
-                if random.random()>rest_prob:
+                if random.random()>rest_prob or city.name=='Fassala':
 
                     self.moved_today=True
                     
@@ -522,6 +525,8 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
         if G.nodes[node].get('type') == 'Camp' and node in paths:
             if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
                 pass # boarder does not open before 21st feb
+            elif node == 'Fassala' and current_date > datetime(2012, 2, 21).date():
+                nx.set_node_attributes(G, { 'Fassala': False }, 'is_open')
             else:
                 pops[node]=data.get('population',0)
                 paths[node].remove(start_node)
