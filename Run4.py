@@ -3,35 +3,35 @@
 TO DO
 
 
-~20hr (Strategic grouping update)
-- Consider group size distributions and begin to model stategic groups
-- Logic for reassessing at each node the group
-- Leaving family?
+~15hr (Strategic grouping update) 
+- Consider group size distributions and begin to model stategic groups Y
+- Logic for reassessing at each node the group Y
+- Leaving family? Y
 
 
 ~3hr (Empirical improvement update)
-- Foreign conflicts
-- Leaving camps when foreign conflict
-- Reassess score after x days
+- Foreign conflicts Y
+- Leaving camps when foreign conflict Y
+- Reassess score after x days Y
 
 ~ 5hr (Speed and simplicity update)
-- clean up code 896-...
-- RUn through and find the slowest bits of the code
-- COme up with a list of optimisation techniques (I.e. using Numpy on certain lists)
-- employ optimisation techniques
+- clean up code 896-... Y
+- RUn through and find the slowest bits of the code Y
+- COme up with a list of optimisation techniques (I.e. using Numpy on certain lists) Y
+- employ optimisation techniques Y
 
 ~ 2hr (Group formation update)
-- Babies should be assigned to a family
+- Babies should be assigned to a family Y
 
 ~ 9hr (Further agent logic update)
-- Link frequency (4hr)
-- Destination node danger (2hr)
-- Danger of current node stored as well as nogos (1hr)
-- Danger of indirect nodes stored (1hr)
-- Indirect node danger included (1hr)
+- Link frequency (4hr) Y
+- Destination node danger (2hr) Y
+- Danger of current node stored as well as nogos (1hr) Y
+- Danger of indirect nodes stored (1hr) Y
+- Indirect node danger included Y
 
 ~ 7hr(Communication update)
-- Danger of nodes (directly visited) communicated (2hr)
+- Danger of nodes (directly visited) communicated (2hr) Y
 - Quick revision of routes and rumours (2hr)
 - Contact list stored alongside nogos and danger (1hr)
 - Agent notified if contact makes it to another country/camp (1hr)
@@ -51,6 +51,7 @@ COMMON BUGS
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import networkx as nx
 import csv
 import time
 from Locations import City, Camp, total_pop
@@ -58,6 +59,7 @@ from Agents import Agent, deathmech
 from Network import create_graph, draw_graph
 from Visualisations import colors, print_progress_bar
 from datetime import datetime
+import sys
 
 # populations from 2009 census https://www.citypopulation.de/en/mali/cities/
 
@@ -802,7 +804,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 300 # TO VARY
+frac = 200 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -819,12 +821,12 @@ normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
 
 if not np.isclose(sum(normalized_prob_values), 1.0):
     raise ValueError("Normalized probabilities do not sum closely to 1.")
-
+ 
 G = create_graph(locations)
 ongoing_conflicts = []
 
 Agent.calculate_distributions()
-Agent.initialise_cities(foreign_cities)
+Agent.initialise_cities(foreign_cities+camps)
 Agent.initialise_populations(cities+camps,total_population)
 
 Agents = {}
@@ -839,19 +841,37 @@ for i in list(range(1,n_agents+1)):
 for agent in ags:
     agent.form_families(ags)
 
+
+
+
+for agent in ags:
+    agent.join_dependents(ags)
+    
+
 for agent in ags: # must initialise new for loop to ensure all families initialised
     agent.form_fam_group()
+
     
 for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
-    agent.define_groups()
+    agent.define_groups(ags)
+    #print([x.id for x in agent.fam])
+    #print([x.id for x in agent.group])
+    #print(agent.age)
+    #print(agent.is_leader)
+    #print(agent.checked)
+    #print(agent.travelswithfam)
+    #print("\n\n\n")
+
+
 
 for agent in ags: # must initialise new group to ensure all family travelling groups initialised
     agent.group_speeds_and_cap()
 
 """
-FAM GROUP B.U.G FIX
+# FAM GROUP B.U.G FIX
 for agent in ags:
     print([x.id for x in agent.fam])
+    print([x.id for x in agent.group])
     for af in agent.group:
         if af.leftfam:
             print(colors.PURPLE + str(af.id) + colors.END)
@@ -861,8 +881,8 @@ for agent in ags:
             print(colors.GREEN + str(af.id) + colors.END)
     print("\n")
 
-"""
 
+sys.exit(1)"""
 if (45.92*n_agents)>(365*1000):
     birth_rate = round((45.92*n_agents)/(365*1000))
     bpd = True
@@ -870,8 +890,6 @@ else:
     birth_rate = round(1/((45.92*n_agents)/(365*1000))) # derived from https://www.statista.com/statistics/977023/crude-birth-rate-in-mali/
     bpd = False
 
-
-print(birth_rate)
 
 populations = {camp.name: [] for camp in camps}
 countries = {x:[] for x in ['Burkina Faso','Côte D\'Ivoire','Guinea','Mauritania','Niger','Senegal','Mali','Other','Dead']}
@@ -896,8 +914,12 @@ for current_date in dates:
     print(f"Simulating day: {current_date.strftime('%Y-%m-%d')}")
 
     if current_date==datetime(2012, 3, 19).date():
+        for id in Agents:
+            Agents[id].nogos.add('Fassala')
         fassala.is_open=False
         fassala.iscamp=False
+        nx.set_node_attributes(G, { 'Fassala': False }, 'is_open')
+        nx.set_node_attributes(G, { 'Fassala': 'Closed camp' }, 'type')
         for id in fassala.members:
             Agents[id].moving = True
             Agents[id].status = 'Fleeing from conflict'
@@ -910,7 +932,6 @@ for current_date in dates:
             Agents[id].status = 'Fleeing from conflict'
             Agents[id].startdate=current_date
             Agents[id].longterm=None
-            Agents[id].shortterm=None
             Agents[id].distance_traveled_since_rest=0
 
         
@@ -942,7 +963,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
 
 
 
@@ -956,7 +977,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
             
         elif event['location']=='Tin Zaouaten':
             G.nodes['Tinzaouaten']['has_conflict']=True
@@ -967,7 +988,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
 
         elif event['location']=='Komeye Koukou':
             G.nodes['Koue']['has_conflict']=True
@@ -978,7 +999,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
 
         elif event['location']=='Syama Gold Mine':
             G.nodes['Syama']['has_conflict']=True
@@ -989,7 +1010,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
         else:
             G.nodes[event['location']]['has_conflict']=True
 
@@ -999,7 +1020,7 @@ for current_date in dates:
 
             if death_ids:
                 for id in death_ids:
-                    Agents[id].kill(frac)
+                    Agents[id].kill(frac,ags)
             
 
         location.in_city_conflict(event['fatalities'], current_date)
@@ -1029,19 +1050,35 @@ for current_date in dates:
 
     for id in Agents:
         
+        if Agents[id].longterm=="Fassala" and current_date>datetime(2012, 3, 19).date():
+            print(Agents[id].location)
+            print(Agents[id].capitalbracket)
+            print(Agents[id].nogos)
+            print("Fassala shouldn\'t be a long term destination")
+            
+
+                
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
+        
+        if Agents[id].longterm=="Fassala" and current_date>datetime(2012, 3, 19).date():
+            print(Agents[id].capitalbracket)
+
+            # sys.exit(1)
+                
 
         if Agents[id].status != 'Dead' and Agents[id].is_leader and Agents[id].location != 'Abroad':
             Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
 
         if Agents[id].moved_today:
             
-            # print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
+            #print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
             #     + " to " + str(loc_dic[Agents[id].shortterm].name) + "... status: " + str(Agents[id].status))
             #print("I'm stuck: " + str(Agents[id].is_stuck))
             #print("I'm leader: " + str(Agents[id].is_leader))
             #print("Moving: " + str(Agents[id].moving))
             #print("In group: " + str(Agents[id].ingroup))
+            #print("in fam: " + str(Agents[id].in_family))
+            #print("left fam: " + str(Agents[id].leftfam))
             #if Agents[id].is_leader:
             #    if Agents[id].leftfam or len(Agents[id].group)==1:
             #        print(colors.YELLOW + "Solo" + str([x.id for x in Agents[id].group]) + colors.END)
@@ -1061,18 +1098,13 @@ for current_date in dates:
 
             try:
                 loc_dic[Agents[id].location].removemember(id)
+                #print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
+                #print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
+                #print("\n")
             except:
-                print(Agents[id].status)
-                print(Agents[id].is_stuck)
-                print(Agents[id].group)
-                print(Agents[id].is_leader)
-                print(Agents[id].ingroup)
-                print(Agents[id].location)
-                loc_dic[Agents[id].location].removemember(id)
+                sys.exit(1)
 
-            #print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
-            #print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
-            #print("\n")
+            
             
             G.nodes[Agents[id].location]['population'] -= 1 # update nodes
             G.nodes[Agents[id].shortterm]['population'] += 1
@@ -1150,19 +1182,83 @@ for current_date in dates:
     
     if bpd:
         for new_id in range(i,i+birth_rate+1):
-            Agents[i]=Agent(i,age=0, is_leader=True)
-            total_agents+=1
-            loc_dic[Agents[i].location].addmember(i)
-            ags.append(Agents[i])
-            i+=1
+            tobeborn=True
+            x=0
+            while tobeborn and x<10000:
+                rand_loc = Agent.randomloc()
+                for id in loc_dic[rand_loc].members:
+                    member=Agents[id]
+                    if member.is_leader and 16<member.age<65 and member.gender=='F':
+                        Agents[i]=Agent(i,age=0, is_leader=False,location=rand_loc)
+                        member.fam.append(Agents[i])
+                        member.group.append(Agents[i])
+                        
+                        if member.in_family:
+                            
+                            for agent in member.fam:
+                                agent.fam=member.fam
+                        else:
+                            member.in_family=True
+
+                        if member.ingroup:
+                                for agent in member.group:
+                                    agent.group=member.group
+                
+                        else:
+                            
+                            member.in_group=True
+                            
+
+                        tobeborn=False
+                        break
+                x+=1
+            if i in Agents:
+                Agents[i].in_family=True
+                Agents[i].in_group=True
+                total_agents+=1
+                loc_dic[Agents[i].location].addmember(i)
+                ags.append(Agents[i])
+                
         i+=birth_rate
     else:
         if days%birth_rate==0:
-            Agents[i]=Agent(i,age=0, is_leader=True)
-            total_agents+=1
-            loc_dic[Agents[i].location].addmember(i)
-            ags.append(Agents[i])
-            i+=1
+            tobeborn=True
+            x=0
+            while tobeborn and x<10000:
+                rand_loc = Agent.randomloc()
+                for id in loc_dic[rand_loc].members:
+                    member=Agents[id]
+                    if member.is_leader and 16<member.age<65 and member.gender=='Female':
+                        Agents[i]=Agent(i,age=0, is_leader=False,location=rand_loc)
+                        member.fam.append(Agents[i])
+                        member.group.append(Agents[i])
+                        
+                        if member.in_family:
+                            
+                            for agent in member.fam:
+                                agent.fam=member.fam
+                        else:
+                            member.in_family=True
+
+                        if member.ingroup:
+                                for agent in member.group:
+                                    agent.group=member.group
+                
+                        else:
+                            
+                            member.in_group=True
+                            
+
+                        tobeborn=False
+                        break
+                x+=1
+            if i in Agents:
+                Agents[i].in_family=True
+                Agents[i].in_group=True
+                total_agents+=1
+                loc_dic[Agents[i].location].addmember(i)
+                ags.append(Agents[i])
+                i+=1
 
     days+=1
 

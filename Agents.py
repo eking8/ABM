@@ -40,8 +40,16 @@ class Agent:
     def calculate_distributions(cls):
         cls.probabilities = [pop / sum(cls.populations) for pop in cls.populations]
         cls.cumulative_distribution = np.cumsum(cls.probabilities)
-
-    def __init__(self, id, status = 'Resident', age=None, is_leader=False):
+    
+    @classmethod
+    def randomloc(cls):
+        val = np.random.choice(
+                list(__class__.city_probabilities.keys()),
+                p=__class__.normalized_prob_values
+            )
+        return val
+    
+    def __init__(self, id, status = 'Resident', age=None, is_leader=False,location=None):
         self.id = id
 
         if age:
@@ -65,11 +73,13 @@ class Agent:
         self.is_leader=is_leader
         self.in_family=False 
         self.fam_size=1
-        self.fam=None
-        self.location = np.random.choice(
-            list(self.__class__.city_probabilities.keys()),
-            p=self.__class__.normalized_prob_values
-        )
+        if location:
+            self.location=location
+        else:
+            self.location = np.random.choice(
+                list(self.__class__.city_probabilities.keys()),
+                p=self.__class__.normalized_prob_values
+            )
         self.city_origin = self.location
         self.shortterm = self.location
         self.fam=[self] # carried by all members of the family
@@ -103,7 +113,7 @@ class Agent:
 
         if not self.in_family and not self.checked:
 
-            if 16<self.age<65:
+            if 16<=self.age<=65:
                 
 
                 self.in_family=True
@@ -129,23 +139,57 @@ class Agent:
                     agent.checked=True
 
                 self.is_leader=True
+            
+
+    def join_dependents(self,all_agents):
+        if not self.in_family and not self.is_leader:
+            if self.age>65 or self.age<16:
+                available_leaders = [agent for agent in all_agents if agent.location == self.location 
+                                     and agent.id != self.id and agent.is_leader]
+                if len(available_leaders)>0:
+                    leader = random.choice(available_leaders)
+                
+                    self.in_family=True
+
+                    if leader.in_family:
+                        leader.fam.append(self)
+                        for agent in leader.fam:
+                            agent.fam=leader.fam
+                
+                    else:
+                        leader.in_family=True
+                        leader.fam.append(self)
+                        self.fam.append(leader)
+                else:
+                    self.is_leader # forced to travel alone without family
+                    
+
                 
         
 
             
                 
     def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
-        # prob of travelling with fam / prob of being in fam = prob of travelling with fam given in fam
-        if self.in_family:
-            self.travelswithfam= random.random() < 0.596/0.98 
+        # bayesian calculation on phone 
+        if 16<self.age<65:
+            if self.in_family:
+                self.travelswithfam = random.random()<0.1761
+            else:
+                self.is_leader=True
         else:
-            self.is_leader=True
+            if self.is_leader:
+                self.travelswithfam=False
+            else:
+                self.travelswithfam=True
+        self.checked=False
 
 
 
 
-    def define_groups(self):
-        if self.in_family and not self.ingroup:
+
+
+    def define_groups(self,all_agents):
+        if self.in_family and not self.ingroup and not self.checked:
             
             if self.is_leader:
                 
@@ -159,31 +203,83 @@ class Agent:
                         for agent in self.group:
                             agent.group=self.group
                             agent.ingroup=True
+                            agent.checked=True
+                    else:
+                        self.checked=True
+                        self.ingroup=False
+                        self.leftfam=True
+
                     
                 else:
                     self.leftfam=True
-                    max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
+                    max_member = max((x for x in self.fam if x.travelswithfam and 16<x.age < 65), key=lambda x: x.age, default=None)
                     if max_member:
                         max_member.is_leader=True
                         max_member.group=[x for x in max_member.fam if x.travelswithfam]
                         max_member.group = sorted(max_member.group, key=lambda agent: agent.id)
                         if len(max_member.group)>1:
-                            max_member.ingroup=True
+                            
                             for agent in max_member.group:
                                 agent.group=max_member.group
                                 agent.ingroup=True
+                                agent.checked=True
+                            else:
+                                max_member.checked=True
+                                max_member.ingroup=False
+                                max_member.leftfam=True
+                    else:
+                        for member in self.fam:
+                            if not member.checked:
+                                member.joingroup(all_agents)
+                                
 
             
             else:
                 if not self.travelswithfam:
                     self.leftfam=True
                     self.is_leader=True
+                    self.checked=True
         
         
                     
 
-        
-            # strategic group stuff here
+
+    def joingroup(self,all_agents):
+        available_leaders = [agent for agent in all_agents if agent.location == self.location 
+                             and agent.id != self.id and agent.is_leader and 16 <= agent.age <= 65]
+        if len(available_leaders)>0:
+            leader = random.choice(available_leaders)
+            self.ingroup=True
+            self.is_leader=False
+
+            rejoin=False
+            self.checked=True
+            if leader.ingroup:
+                for agent in leader.fam:
+                    agent.group.append(self)
+                    self.group.append(agent)
+                    agent.checked=True
+                    if agent in self.fam and agent.leftfam:
+                        agent.leftfam=False
+                        rejoin=True
+                        
+                if rejoin:
+                    self.leftfam=False
+                              
+            else: 
+                leader.ingroup=True
+                leader.group.append(self)
+                self.group.append(leader)
+                
+                if leader in self.fam and leader.leftfam:
+                    leader.leftfam=False
+                    self.leftfam=False
+        else:
+            self.is_leader=True # Forced to travel alone
+            if self.in_family:
+                self.leftfam=True
+                    
+
 
         
             
@@ -218,16 +314,24 @@ class Agent:
         choices = ['M', 'F']
         return random.choices(choices, weights=probabilities, k=1)[0]
     
-    def kill(self, frac):
+    def kill(self, frac,all_agents):
         val = random.randint(1, frac)
         if val==1:
             self.status='Dead'
             self.location = 'Dead'
-        
-            if self.is_leader and self.ingroup:
-                max_member = max((x for x in self.fam if x.travelswithfam and x.age < 65), key=lambda x: x.age, default=None)
-                if max_member:
-                    max_member.is_leader=True    
+
+            if self.ingroup:
+                if self.is_leader:
+                    max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
+                    if max_member:
+                        max_member.is_leader=True   
+                    else:
+                        for member in self.fam:
+                            member.joingroup(all_agents) 
+                for agent in self.group:
+                    agent.group.remove(self)
+                
+            
             
             agents = self.group
             for agent in agents:
@@ -248,7 +352,7 @@ class Agent:
                 
             if city.hasconflict and city.fatalities > self.threshold:
                 for agent in self.group:
-                    agent.nogos.update(city.name)
+                    agent.nogos.add(city.name)
                     if agent.status == 'Resident':
                             
                             agent.moving = True
@@ -276,8 +380,9 @@ class Agent:
                     self.moved_today=True
                     
                     for agent in self.group:
-                        agent.distance_traveled_since_rest+=nx.shortest_path_length(G, agent.location, agent.shortterm, weight='weight')
-                        agent.location=agent.shortterm
+                        if agent.shortterm not in ['Dead',None]:
+                            agent.distance_traveled_since_rest+=nx.shortest_path_length(G, agent.location, agent.shortterm, weight='weight')
+                            agent.location=agent.shortterm
                         if not agent.moving:
                             agent.moving=True
                             agent.startdate=current_date
@@ -522,11 +627,12 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
     distances, paths = nx.single_source_dijkstra(G_filtered, start_node)
     camp_paths_distances = {}
     for node, data in G.nodes(data=True):
-        if G.nodes[node].get('type') == 'Camp' and node in paths:
+        if G.nodes[node].get('type') == 'Camp' and node in paths and G.nodes[node].get('is_open'):
             if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
                 pass # boarder does not open before 21st feb
-            elif node == 'Fassala' and current_date > datetime(2012, 2, 21).date():
-                nx.set_node_attributes(G, { 'Fassala': False }, 'is_open')
+            elif node == 'Fassala' and current_date >= datetime(2012, 3, 19).date():
+                pass
+                print("ayo")
             else:
                 pops[node]=data.get('population',0)
                 paths[node].remove(start_node)
@@ -606,10 +712,11 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
     pops={}
     results = {}
     start_country = G.nodes[start_node].get('country', 'Not specified')
+    
 
     for node, data in G_filtered.nodes(data=True):
         country = data.get('country', None)
-        if country and country != start_country:
+        if country and country != start_country and G.nodes[node].get('type', None)=='City':
             
             # Apply the border closure rule for Niger and Burkina Faso
             if country in ['Niger', 'Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
@@ -655,4 +762,4 @@ def deathmech(members,fat):
     else:
         death_ids=members
     
-    return members
+    return death_ids
