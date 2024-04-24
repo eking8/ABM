@@ -503,7 +503,7 @@ class Agent:
     def roulette_select(self,G,startnode, distances,iscamp):
         """
         Select a key from the distances dictionary using roulette method,
-        where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction)'
+        where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction) - e*fatalities'
 
         The agents have a utility to:
         - Familiarity
@@ -537,6 +537,7 @@ class Agent:
         a = self.age/1000 
         b = 50 # bias assumed to be 50 
         d = 50 # needs to be derived with more detail
+        e=10
 
         if iscamp:
             c = 1/200
@@ -544,7 +545,8 @@ class Agent:
             c=0
         
         # Compute scores using familiarity and distance
-        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] + math.cos(bearings[key]/2) for key in distances}
+        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] 
+                  + math.cos(bearings[key]/2) - e * G.nodes['key']['fatalities'] for key in distances}
         
         # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
         total_score_sum = sum(max(score, 0) for score in scores.values())

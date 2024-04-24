@@ -959,6 +959,7 @@ for current_date in dates:
         G.nodes[location.name]['has_conflict']=True
 
         G.nodes[location.name]['population']-= fat
+        G.nodes[location.name]['fatalities']+= fat
         death_ids = deathmech(loc_dic[location.name].members,fat) 
         loc_dic[location.name].population -= fat
 
