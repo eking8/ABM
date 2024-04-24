@@ -78,18 +78,6 @@ class Location:
         else:
             print(str(id) + " not in " + str(self.name))
             sys.exit(1)
-        
-
-
-
-class City(Location):
-    def __init__(self, name, country="Mali", population=None, hasairport=False, top20 = True):
-        super().__init__(name, country)
-        self.population = population
-        self.hasairport = hasairport
-        self.iscity = True # by definition
-        self.iscamp = False # by definition
-        self.top20 = top20 # if has top 20 population
 
     def in_city_conflict(self, fatalities, current_date):
         """
@@ -106,7 +94,7 @@ class City(Location):
         self.fatalities += fatalities # cum fatalitlies
 
         # print("Conflict updated in " + self.name)
-
+        
     def check_and_update_conflict_status(self, current_date):
         """
         Check and update the city's conflict status based on the last conflict date and the current date.
@@ -120,6 +108,21 @@ class City(Location):
                 # print("Conflict removed in " + self.name)
             # else:
                 # print("Conflict checked in " + self.name)
+        
+
+
+
+class City(Location):
+    def __init__(self, name, country="Mali", population=None, hasairport=False, top20 = True):
+        super().__init__(name, country)
+        self.population = population
+        self.hasairport = hasairport
+        self.iscity = True # by definition
+        self.iscamp = False # by definition
+        self.top20 = top20 # if has top 20 population
+
+
+    
 
 
 

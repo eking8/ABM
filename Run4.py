@@ -9,19 +9,11 @@ TO DO
 - Leaving family? Y
 
 
-~3hr (Empirical improvement update)
-- Foreign conflicts Y
-- Leaving camps when foreign conflict Y
-- Reassess score after x days Y
-
 ~ 5hr (Speed and simplicity update)
 - clean up code 896-... Y
 - RUn through and find the slowest bits of the code Y
 - COme up with a list of optimisation techniques (I.e. using Numpy on certain lists) Y
 - employ optimisation techniques Y
-
-~ 2hr (Group formation update)
-- Babies should be assigned to a family Y
 
 ~ 9hr (Further agent logic update)
 - Link frequency (4hr) Y
@@ -45,6 +37,9 @@ TO DO
 COMMON BUGS
 - Not in XX bug
 - Bar only completing to 99.8%
+- Look if agents get stuck between nogos, if so disregard nogos in conflict
+- Check comments
+- I dont really get the whole kidals and bamakos thing and think it could be removed
 
 """
 
@@ -680,10 +675,17 @@ start_date = pd.to_datetime('2012-01-01')
 end_date = pd.to_datetime('2013-01-01')
 dates = pd.date_range(start_date, end_date)
 
-conflicts = pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")[
+df1 = pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")[
     pd.read_csv("1997-01-01-2024-03-01-Eastern_Africa-Middle_Africa-Northern_Africa-Southern_Africa-Western_Africa-Mali.csv")['year']==2012]
+df1['event_date'] = pd.to_datetime(df1['event_date'], format="%d %B %Y")
 
-conflicts['event_date'] = pd.to_datetime(conflicts['event_date'], format="%d %B %Y")
+
+df2 = pd.read_csv("for_con.csv") # Foreign conflicts included in foreign nodes
+
+df2['event_date'] = pd.to_datetime(df2['event_date'], format="%d-%b-%y")
+
+conflicts = pd.concat([df1, df2], ignore_index=True)
+
 conflicts.sort_values(by='event_date', inplace=True)
 
 # Location dictionary required as ACLED names are not the same as OSMNX
@@ -787,12 +789,13 @@ loc_dic = {'Bamako':bamako,
            "Tintane":tintane,
            "Korhogo":korhogo,
            "Assamakka":assamakka,
-           "Tinzaouaten":tin_zaouaten}
+           "Tinzaouaten":tin_zaouaten,
+           "Pobe Mengao":mentao,
+           "Bobo-Dioulasso":bobo,
+           "Tengandogo":goudoubo,
+           "Passakongo":dedougou}
 
 # Locations without an OSMNX are assumed to be within the closest city
-
-kidals = ['Imezzehene','Tin Kaloumane']
-bamakos = ['Doubabougou','Kati','Kambila']
 
 print("Initilising graph... \n")
 
@@ -804,7 +807,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 200 # TO VARY
+frac = 20000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -952,75 +955,17 @@ for current_date in dates:
         # print("Conflict in " + event['location'])
 
         fat = event['fatalities']
-        # Dealing with the exceptions between ACLED and OSMNX
-        if event['location'] in kidals:
+        
+        G.nodes[location.name]['has_conflict']=True
 
-            G.nodes['Kidal']['has_conflict']=True
+        G.nodes[location.name]['population']-= fat
+        death_ids = deathmech(loc_dic[location.name].members,fat) 
+        loc_dic[location.name].population -= fat
 
-            G.nodes['Kidal']['population']-= fat
-            death_ids = deathmech(loc_dic['Kidal'].members,fat) 
-            loc_dic['Kidal'].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
-
-
-
-        elif event['location'] in bamakos:
-
-            G.nodes['Bamako']['has_conflict']=True
-
-            G.nodes['Bamako']['population']-= fat
-            death_ids = deathmech(loc_dic['Bamako'].members,fat) 
-            loc_dic['Bamako'].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
-            
-        elif event['location']=='Tin Zaouaten':
-            G.nodes['Tinzaouaten']['has_conflict']=True
-
-            G.nodes['Tinzaouaten']['population']-= fat
-            death_ids = deathmech(loc_dic['Tin Zaouaten'].members,fat) 
-            loc_dic['Tin Zaouaten'].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
-
-        elif event['location']=='Komeye Koukou':
-            G.nodes['Koue']['has_conflict']=True
-
-            G.nodes['Koue']['population']-= fat
-            death_ids = deathmech(loc_dic['Koue'].members,fat) 
-            loc_dic['Koue'].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
-
-        elif event['location']=='Syama Gold Mine':
-            G.nodes['Syama']['has_conflict']=True
-
-            G.nodes['Syama']['population']-= fat
-            death_ids = deathmech(loc_dic['Syama'].members,fat) 
-            loc_dic['Syama'].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
-        else:
-            G.nodes[event['location']]['has_conflict']=True
-
-            G.nodes[event['location']]['population']-= fat
-            death_ids = deathmech(loc_dic[event['location']].members,fat) 
-            loc_dic[event['location']].population -= fat
-
-            if death_ids:
-                for id in death_ids:
-                    Agents[id].kill(frac,ags)
+        if death_ids:
+            for id in death_ids:
+                Agents[id].kill(frac,ags)
+        
             
 
         location.in_city_conflict(event['fatalities'], current_date)
@@ -1058,7 +1003,7 @@ for current_date in dates:
             
 
                 
-        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
+        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,camps)
         
         if Agents[id].longterm=="Fassala" and current_date>datetime(2012, 3, 19).date():
             print(Agents[id].capitalbracket)

@@ -4,6 +4,7 @@ import networkx as nx
 from datetime import datetime
 from Visualisations import colors
 import math as math
+from datetime import timedelta
 
 
 class Agent:
@@ -61,7 +62,7 @@ class Agent:
         self.status = status
         self.longterm = None  # Intended destination
         self.moving = False  # Is the agent currently moving to a destination
-        self.threshold = np.random.uniform(0,30)  # InitiaClise the threshold here or in a separate method
+        self.threshold = np.random.uniform(0,20)  # InitiaClise the threshold here or in a separate method
         rand_n= np.random.uniform(0,1)
         self.startdate=None
         self.enddate=None
@@ -329,7 +330,8 @@ class Agent:
                         for member in self.fam:
                             member.joingroup(all_agents) 
                 for agent in self.group:
-                    agent.group.remove(self)
+                    if self in agent.group:
+                        agent.group.remove(self)
                 
             
             
@@ -341,9 +343,22 @@ class Agent:
         
 
 
-    def assess_situation_and_move_if_needed(self,G,city,current_date):
+    def assess_situation_and_move_if_needed(self,G,city,current_date,camps):
+
         
-        
+
+        removal_threshold = timedelta(days=10) # Change this to something smarter
+        default_date = datetime(2012, 1, 1) - removal_threshold
+        special_date = datetime(2012, 3, 18)
+
+        self.nogos = set([
+            loc for loc in self.nogos if 
+            (loc == "Fassala" and current_date > special_date) or not any(
+                loc == camp.name and (current_date - (getattr(camp, 'last_conflict_date') if getattr(camp, 'last_conflict_date') is not None else default_date)) > removal_threshold
+                for camp in camps
+            )
+        ])
+                     
         if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
             
             
