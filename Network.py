@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import math
 
+#@profile
 def create_graph(locations):
 
     """
@@ -33,7 +34,7 @@ def create_graph(locations):
     return G
     
     
-
+#@profile
 def draw_graph(G, current_date, distances_on=False):
     
     """
@@ -89,6 +90,7 @@ def draw_graph(G, current_date, distances_on=False):
     plt.show()
     # print("Network visualization completed.")
 
+#@profile
 def find_accessible_nodes_within_distance(G, start_node, max_distance_km):
     """
     Finds all nodes within a specified distance of a start node in a graph.
@@ -129,6 +131,7 @@ def find_accessible_nodes_within_distance(G, start_node, max_distance_km):
     
     return accessible_nodes
 
+#@profile
 def calculate_bearing(start_lat, start_lon, end_lat, end_lon):
     """
     Calculates the bearing between two points in radians.

@@ -5,15 +5,18 @@ from datetime import datetime
 from Visualisations import colors
 import math as math
 from datetime import timedelta
+import pandas as pd
 
 
 class Agent:
     # Age groups and their population
     age_groups = [(90, 100), (80, 89), (70, 79), (60, 69), (50, 59), (40, 49), (30, 39), (20, 29), (10, 19), (0, 9)]
     populations = [21510, 88052, 289198, 632542, 984684, 1569836, 2451989, 3466640, 5240091, 7650947]
+    lam = 0.225
 
     probabilities = []
     cumulative_distribution = []
+
 
     @classmethod
     def initialise_populations(cls,locations,total_population):
@@ -42,6 +45,7 @@ class Agent:
         cls.probabilities = [pop / sum(cls.populations) for pop in cls.populations]
         cls.cumulative_distribution = np.cumsum(cls.probabilities)
     
+
     @classmethod
     def randomloc(cls):
         val = np.random.choice(
@@ -50,6 +54,7 @@ class Agent:
             )
         return val
     
+    # @profile
     def __init__(self, id, status = 'Resident', age=None, is_leader=False,location=None):
         self.id = id
 
@@ -94,6 +99,8 @@ class Agent:
         self.distance_traveled_since_rest=0
         self.moved_today=False
         self.direction=None
+        self.dangers={}
+        self.instratgroup=False
         
 
         if rand_n>0.9965: # capital 100000
@@ -108,7 +115,7 @@ class Agent:
         else:
             self.speed = abs(np.random.normal(400, 100))
     
-
+    # @profile
     def form_families(self,all_agents):     
 
 
@@ -141,7 +148,7 @@ class Agent:
 
                 self.is_leader=True
             
-
+    # @profile
     def join_dependents(self,all_agents):
         if not self.in_family and not self.is_leader:
             if self.age>65 or self.age<16:
@@ -169,7 +176,7 @@ class Agent:
         
 
             
-                
+    # @profile           
     def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
         # bayesian calculation on phone 
         if 16<self.age<65:
@@ -186,9 +193,9 @@ class Agent:
 
 
 
+    
 
-
-
+    # @profile
     def define_groups(self,all_agents):
         if self.in_family and not self.ingroup and not self.checked:
             
@@ -244,7 +251,7 @@ class Agent:
         
                     
 
-
+    # @profile
     def joingroup(self,all_agents):
         available_leaders = [agent for agent in all_agents if agent.location == self.location 
                              and agent.id != self.id and agent.is_leader and 16 <= agent.age <= 65]
@@ -287,7 +294,7 @@ class Agent:
 
 
             
-
+    # @profile
     def group_speeds_and_cap(self):
         
         self.speed = min(x.speed for x in self.group)
@@ -299,6 +306,7 @@ class Agent:
     # Calculate the cumulative distribution
     cumulative_distribution = np.cumsum(probabilities)
 
+    # @profile
     def generate_random_age(self):
         # Generate a random float in the range [0, 1)
         rand = np.random.random()
@@ -308,6 +316,15 @@ class Agent:
             if rand < threshold:
                 # Return a random age within the selected age group
                 return np.random.randint(self.__class__.age_groups[i][0], self.__class__.age_groups[i][1] + 1)
+    
+    """
+    # @profile
+    def group_utility(self,available_agents):
+            Agent.lam
+    """
+
+
+
 
     @staticmethod
     def generate_gender():
@@ -315,6 +332,7 @@ class Agent:
         choices = ['M', 'F']
         return random.choices(choices, weights=probabilities, k=1)[0]
     
+    # @profile
     def kill(self, frac,all_agents):
         val = random.randint(1, frac)
         if val==1:
@@ -342,7 +360,7 @@ class Agent:
 
         
 
-
+   # @profile
     def assess_situation_and_move_if_needed(self,G,city,current_date,camps):
 
         
@@ -466,7 +484,7 @@ class Agent:
                     self.distance_traveled_since_rest=0 # reset after rest
                     city.waited_days+=len(self.group)
 
-
+    # @profile
     def merge_nogo_lists(self, all_agents):
         """
         This method allows an agent to merge their 'nogos' set with those of 0-3 other agents in the same city.
@@ -499,7 +517,7 @@ class Agent:
         
 
 
-    
+    # @profile   
     def roulette_select(self,G,startnode, distances,iscamp):
         """
         Select a key from the distances dictionary using roulette method,
@@ -546,7 +564,7 @@ class Agent:
         
         # Compute scores using familiarity and distance
         scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] 
-                  + math.cos(bearings[key]/2) - e * G.nodes['key']['fatalities'] for key in distances}
+                  + math.cos(bearings[key]/2) - e * G.nodes[key]['fatalities'] for key in distances}
         
         # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
         total_score_sum = sum(max(score, 0) for score in scores.values())
@@ -573,7 +591,8 @@ class Agent:
                 
         # In case of rounding errors, return the last key
         return keys_sorted[-1]
-    
+
+    #@profile 
     def indirect_check(self, G, start_node,current_date):
         
         if G.nodes[start_node].get('is_camp',False):
@@ -612,7 +631,7 @@ class Agent:
     
 
 
-
+#@profile
 def camp_paths(G, start_node,max_link_length,current_date,nogo):
     """
     Finds shortest paths and distances from a given start node to all camps in the graph.
@@ -645,11 +664,10 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
     camp_paths_distances = {}
     for node, data in G.nodes(data=True):
         if G.nodes[node].get('type') == 'Camp' and node in paths and G.nodes[node].get('is_open'):
-            if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
+            if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < pd.Timestamp(datetime(2012, 2, 21).date()):
                 pass # boarder does not open before 21st feb
-            elif node == 'Fassala' and current_date >= datetime(2012, 3, 19).date():
+            elif node == 'Fassala' and current_date >= pd.Timestamp(datetime(2012, 3, 19).date()):
                 pass
-                print("ayo")
             else:
                 pops[node]=data.get('population',0)
                 paths[node].remove(start_node)
@@ -658,7 +676,7 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
     
     return camp_paths_distances
 
-
+#@profile
 def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     """
     Finds the 5 nearest cities with an airport from the given start node, considering a maximum link length,
@@ -703,7 +721,7 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     return nearest_cities
 
 
-
+#@profile
 def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length, current_date,nogo):
     """
     Finds the shortest distance and respective paths from the start node to the closest city 
@@ -736,7 +754,7 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
         if country and country != start_country and G.nodes[node].get('type', None)=='City':
             
             # Apply the border closure rule for Niger and Burkina Faso
-            if country in ['Niger', 'Burkina Faso'] and current_date < datetime(2012, 2, 21).date():
+            if country in ['Niger', 'Burkina Faso'] and current_date < pd.Timestamp(datetime(2012, 2, 21).date()):
                 continue  # Skip this city if the current date is before the border opening date
 
             try:
@@ -751,7 +769,7 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
 
     return results
 
-
+#@profile
 def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     # Step 1: Create a new empty graph to hold the filtered graph
     G_filtered = nx.Graph()
@@ -771,6 +789,7 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     
     return G_filtered
 
+#@profile
 def deathmech(members,fat):
     if fat==0:
         return None

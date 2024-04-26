@@ -4,6 +4,7 @@ from datetime import timedelta
 from functools import lru_cache
 import math
 import sys
+import random
 
 
 # store as cache to improve speed on repeated use...
@@ -11,6 +12,7 @@ import sys
 geocode_cache = {}
 
 class Location: 
+    # @profile
     def __init__(self, name, country="Mali"):
         self.name = name
         self.country = country
@@ -22,9 +24,11 @@ class Location:
         self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulation
         self.waited_days=0
         self.is_open = True
+        self.perc=0
 
     # find lat and long of location
-        
+    
+
     @staticmethod
     def geocode_location(name, country):
         query = f"{name}, {country}"
@@ -41,7 +45,8 @@ class Location:
                 return None, None
     
     # find distance between two points on a sphere
-            
+
+   
     @staticmethod
     @lru_cache(maxsize=None)
     def haversine_distance(lat1, lon1, lat2, lon2):
@@ -56,7 +61,7 @@ class Location:
 
 
     # method to add connections
-
+    #@profile
     def add_connection(self, other_location):
         if not all([self.latitude, self.longitude, other_location.latitude, other_location.longitude]):
             print(f"Missing coordinates for connection between {self.name} and {other_location.name}")
@@ -67,10 +72,12 @@ class Location:
         crosses_border = self.country != other_location.country
         self.connections.append({'location': other_location, 'distance': distance, 'crosses_border': crosses_border})
     
+    #@profile
     def addmember(self,id):
         self.members.append(id)
         self.population += 1
 
+    #@profile
     def removemember(self,id):
         if id in self.members:
             self.members.remove(id)
@@ -79,6 +86,7 @@ class Location:
             print(str(id) + " not in " + str(self.name))
             sys.exit(1)
 
+    #@profile
     def in_city_conflict(self, fatalities, current_date):
         """
         Update the conflict status of the city and track the date of the last conflict.
@@ -94,7 +102,8 @@ class Location:
         self.fatalities += fatalities # cum fatalitlies
 
         # print("Conflict updated in " + self.name)
-        
+    
+    #@profile   
     def check_and_update_conflict_status(self, current_date):
         """
         Check and update the city's conflict status based on the last conflict date and the current date.
@@ -108,11 +117,53 @@ class Location:
                 # print("Conflict removed in " + self.name)
             # else:
                 # print("Conflict checked in " + self.name)
+    
+    #@profile
+    def form_strat_group(self,Agents):
+
+        group_size=0
+        group=[1]
+
+
+
+        for id in self.members:
+                
+                if not Agents[id].ingroup:
+                    if self.perc > 0.09: # Roughly 10% travel in some form of strategic group
+                        break
+                    elif len(group)>=group_size:
+                        for agent in group:
+                            if agent!=1:
+                                agent.group=group
+                                print([x.id for x in group])
+                        Agents[id].is_leader=True
+                        group_size=abs(random.normalvariate(10,4))
+                        Agents[id].ingroup=True
+                        Agents[id].instratgroup=True
+                        group=[Agents[id]]
+                    else:
+                        Agents[id].ingroup=True
+                        Agents[id].instratgroup=True
+                        Agents[id].is_leader=False
+                        group.append(Agents[id])
+                        
+                                
+
+        
+
+
+    
+    def perc_in_group(self,Agents):
+        ingroup = len([Agents[x] for x in self.members if x.instratgroup])
+        total = len([Agents[x] for x in self.members])
+        self.perc=ingroup/total
+            
         
 
 
 
 class City(Location):
+    #@profile
     def __init__(self, name, country="Mali", population=None, hasairport=False, top20 = True):
         super().__init__(name, country)
         self.population = population
@@ -127,6 +178,7 @@ class City(Location):
 
 
 class Camp(Location):
+    #@profile
     def __init__(self, name, country, population=None): # Need to change capacity to empirically derived
         super().__init__(name, country)
         self.population = population
@@ -138,7 +190,7 @@ class Camp(Location):
         
 
     
-
+#@profile
 def total_pop(cities):
     return sum(city.population for city in cities)
 

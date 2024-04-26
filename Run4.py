@@ -3,24 +3,18 @@
 TO DO
 
 
-~15hr (Strategic grouping update) 
-- Consider group size distributions and begin to model stategic groups Y
-- Logic for reassessing at each node the group Y
-- Leaving family? Y
-
 
 ~ 5hr (Speed and simplicity update)
-- clean up code 896-... Y
-- RUn through and find the slowest bits of the code Y
-- COme up with a list of optimisation techniques (I.e. using Numpy on certain lists) Y
 - employ optimisation techniques Y
 
-~ 9hr (Further agent logic update)
+~ 7hr (Further agent logic update)
 - Link frequency (4hr) Y
-- Destination node danger (2hr) Y
 - Danger of current node stored as well as nogos (1hr) Y
 - Danger of indirect nodes stored (1hr) Y
-- Indirect node danger included Y
+- Merge dangers
+
+~ 8hr (Futher Strategic Group formation update)
+- Include logic for splitting and joining at each node
 
 ~ 7hr(Communication update)
 - Danger of nodes (directly visited) communicated (2hr) Y
@@ -43,7 +37,10 @@ COMMON BUGS
 
 """
 
+
+
 import matplotlib.pyplot as plt
+
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -807,7 +804,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 20000 # TO VARY
+frac = 300 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -849,10 +846,14 @@ for agent in ags:
 
 for agent in ags:
     agent.join_dependents(ags)
+
     
 
 for agent in ags: # must initialise new for loop to ensure all families initialised
     agent.form_fam_group()
+
+for loc in locations:
+    loc.form_strat_group(Agents)
 
     
 for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
@@ -929,7 +930,7 @@ for current_date in dates:
             Agents[id].startdate=current_date
             Agents[id].longterm=None
             Agents[id].distance_traveled_since_rest=0
-    elif current_date>datetime(2012, 3, 19).date():
+    elif current_date>pd.Timestamp(datetime(2012, 3, 19)):
         for id in fassala.members:
             Agents[id].moving = True
             Agents[id].status = 'Fleeing from conflict'
@@ -996,7 +997,7 @@ for current_date in dates:
 
     for id in Agents:
         
-        if Agents[id].longterm=="Fassala" and current_date>datetime(2012, 3, 19).date():
+        if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
             print(Agents[id].location)
             print(Agents[id].capitalbracket)
             print(Agents[id].nogos)
@@ -1006,7 +1007,7 @@ for current_date in dates:
                 
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,camps)
         
-        if Agents[id].longterm=="Fassala" and current_date>datetime(2012, 3, 19).date():
+        if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
             print(Agents[id].capitalbracket)
 
             # sys.exit(1)
