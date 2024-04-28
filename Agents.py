@@ -114,6 +114,12 @@ class Agent:
             self.speed = abs(np.random.normal(200,50))
         else:
             self.speed = abs(np.random.normal(400, 100))
+
+    def update_danger(self,fat):
+        if self.location in self.dangers:
+            self.dangers[self.location]+=fat
+        else:
+            self.dangers[self.location]=fat
     
     # @profile
     def form_families(self,all_agents):     
@@ -548,6 +554,7 @@ class Agent:
         c = 1/200 if iscamp else 0
         d = 50  # could be refined further
         e = 10
+        f = 1 # must be refined further
 
         scores = {}
         for key, value in distances.items():
@@ -559,12 +566,19 @@ class Agent:
                 bearing_difference = self.direction - G.get_edge_data(startnode, value['path'][0])['bearing']
             
             cosine_of_bearing = math.cos(bearing_difference / 2)
+            
+            
+            
+
+
             score = (self.familiar.get(key, 0)
                     - a * value['distance']
                     + b
                     - c * value.get('population', 0)
                     + d * cosine_of_bearing
-                    - e * G.nodes[key].get('fatalities', 0))
+                    - e * G.nodes[key].get('fatalities', 0)
+                    + f * value['travelled'])
+    
             if score > 0:
                 scores[key] = score
 
@@ -590,26 +604,28 @@ class Agent:
 
     #@profile 
     def indirect_check(self, G, start_node,current_date):
-        
-        if G.nodes[start_node].get('is_camp',False):
 
-            for neighbor in G.neighbors(start_node):
+        G_filtered = filter_graph_by_max_link_length(G, self.speed,start_node,self.nogos)
+        
+        if G_filtered.nodes[start_node].get('is_camp',False):
+
+            for neighbor in G_filtered.neighbors(start_node):
                 
-                if G.nodes[neighbor].get('has_conflict', False):
+                if G_filtered.nodes[neighbor].get('has_conflict', False):
                     for agent in self.group:
-                        agent.nogos.add(G.nodes[neighbor].get('name', neighbor))
-                        agent.nogos.add(G.nodes[start_node].get('name', start_node))
+                        agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
+                        agent.nogos.add(G_filtered.nodes[start_node].get('name', start_node))
                         agent.moving=True
                         agent.startdate=current_date
                     break
 
         else:
 
-            for neighbor in G.neighbors(start_node):
+            for neighbor in G_filtered.neighbors(start_node):
                 
-                if G.nodes[neighbor].get('has_conflict', False):
+                if G_filtered.nodes[neighbor].get('has_conflict', False):
                     for agent in self.group:
-                        agent.nogos.add(G.nodes[neighbor].get('name', neighbor))
+                        agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
                 
 
 
@@ -667,7 +683,12 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
             else:
                 pops[node]=data.get('population',0)
                 paths[node].remove(start_node)
-                camp_paths_distances[node] = {'path':paths[node], 'distance':distances[node],'population':pops[node]}
+                
+                if len(paths[node])>0:
+                    trav=G[start_node][paths[node][0]]['travelled']
+                else:
+                    trav=0
+                camp_paths_distances[node] = {'path':paths[node], 'distance':distances[node],'population':pops[node],'travelled':trav}
 
     
     return camp_paths_distances
@@ -706,8 +727,14 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
         if node != start_node and G_filtered.nodes[node].get('has_airport', False):
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
-                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]  # Exclude start node from path
-                cities_info[node] = {'distance': path_length, 'path': path, 'population':pops[node]}
+                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')
+                path.remove(start_node)  # Exclude start node from path
+                
+                if len(path)>0:
+                    trav=G[start_node][path[0]]['travelled']
+                else:
+                    trav=0
+                cities_info[node] = {'distance': path_length, 'path': path, 'population':pops[node],'travelled':trav}
             except nx.NetworkXNoPath:
                 pass
 
@@ -755,11 +782,17 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
 
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
-                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]
+                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')
+                path.remove(start_node)
                 pops[node]=data.get('population',0)
+                
+                if len(path)>0:
+                    trav=G[start_node][path[0]]['travelled']
+                else:
+                    trav=0
                 # If the city is closer than any previously found or if it's the first city found for this country
                 if node not in results or path_length < results[node]['distance']:
-                    results[node] = {'distance': path_length, 'path': path, 'population':pops[node]}
+                    results[node] = {'distance': path_length, 'path': path, 'population':pops[node],'travelled':trav}
             except nx.NetworkXNoPath:
                 pass  # No path exists to this node, ignore it
 

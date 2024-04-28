@@ -3,10 +3,7 @@
 TO DO
 
 ~ 7hr (Further agent logic update)
-- Link frequency (4hr) Y
 - Danger of current node stored as well as nogos (1hr) Y
-- Danger of indirect nodes stored (1hr) Y
-- Merge dangers
 - Indirect checks must be on filtered graph
 
 ~ 8hr (Futher Strategic Group formation update)
@@ -14,6 +11,7 @@ TO DO
 
 ~ 7hr(Communication update)
 - Danger of nodes (directly visited) communicated (2hr) Y
+^ apply in logic (merging)
 - Quick revision of routes and rumours (2hr)
 - Contact list stored alongside nogos and danger (1hr)
 - Agent notified if contact makes it to another country/camp (1hr)
@@ -961,6 +959,9 @@ for current_date in dates:
         death_ids = deathmech(loc_dic[location.name].members,fat) 
         loc_dic[location.name].population -= fat
 
+        for id in location.members:
+            Agents[id].update_danger(fat)
+            
         if death_ids:
             for id in death_ids:
                 Agents[id].kill(frac,ags)
@@ -1049,9 +1050,17 @@ for current_date in dates:
                 sys.exit(1)
 
             
+            if Agents[id].location!=Agents[id].shortterm:
+                G.nodes[Agents[id].location]['population'] -= 1 # update nodes
+                G.nodes[Agents[id].shortterm]['population'] += 1
             
-            G.nodes[Agents[id].location]['population'] -= 1 # update nodes
-            G.nodes[Agents[id].shortterm]['population'] += 1
+            
+                G.edges[Agents[id].location, Agents[id].shortterm]['travelled']+=1
+            
+
+
+            
+
             if not Agents[id].merged:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
