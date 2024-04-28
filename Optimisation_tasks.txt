@@ -27,6 +27,8 @@ Improve merge_nogo_lists function:
 Evaluate and refactor roulette_select: 
 - Optimize the scoring logic in lines 556-557, which currently runs very slow.
 
++++++++
+
 Improve handling of nodes and paths in camp_paths: 
 - The function camp_paths in line 642 takes significant time, indicating that the pathfinding or graph traversal logic might need optimisation.
 

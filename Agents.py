@@ -311,11 +311,14 @@ class Agent:
         # Generate a random float in the range [0, 1)
         rand = np.random.random()
         
-        # Find the age group corresponding to the random number
-        for i, threshold in enumerate(self.__class__.cumulative_distribution):
-            if rand < threshold:
-                # Return a random age within the selected age group
-                return np.random.randint(self.__class__.age_groups[i][0], self.__class__.age_groups[i][1] + 1)
+        # Efficiently find the index using searchsorted
+        index = np.searchsorted(self.__class__.cumulative_distribution, rand)
+        
+        # Get the corresponding age group based on the index found
+        age_min, age_max = self.__class__.age_groups[index]
+
+        # Return a random age within the selected age group
+        return np.random.randint(age_min, age_max + 1)
     
     """
     # @profile
@@ -518,7 +521,7 @@ class Agent:
 
 
     # @profile   
-    def roulette_select(self,G,startnode, distances,iscamp):
+    def roulette_select(self, G, startnode, distances, iscamp):
         """
         Select a key from the distances dictionary using roulette method,
         where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction) - e*fatalities'
@@ -532,65 +535,58 @@ class Agent:
         - Overpopulated camps
         - Directions opposite to current one (less likely to circle around)
 
-        :param distances: Dictionary of {key: {'distance': value}}
+        :param distances: Dictionary of {key: {'distance': value, 'population': value, 'path': [path]}}
         :return: Selected key based on roulette selection
         """
 
-        bearings={}
-
-        
-        for key in distances:
-            if self.direction:
-                bearings[key]=self.direction-G.get_edge_data(startnode, distances[key]['path'][0])['bearing']
-            else:
-                bearings[key]=0
-
-        if distances is None:
+        if not distances:
             print('No routes')
             return None
 
-        # Filter out routes with distance of 0, as these can't be scored properly
-        distances = {key: value for key, value in distances.items() if value['distance'] != 0}
+        a = self.age / 1000
+        b = 50  # bias assumed to be 50 
+        c = 1/200 if iscamp else 0
+        d = 50  # could be refined further
+        e = 10
 
-        a = self.age/1000 
-        b = 50 # bias assumed to be 50 
-        d = 50 # needs to be derived with more detail
-        e=10
+        scores = {}
+        for key, value in distances.items():
+            if value['distance'] == 0:
+                continue  # skip routes with a distance of 0, as these can't be scored properly
+            
+            bearing_difference = 0
+            if self.direction and 'bearing' in G.get_edge_data(startnode, value['path'][0]):
+                bearing_difference = self.direction - G.get_edge_data(startnode, value['path'][0])['bearing']
+            
+            cosine_of_bearing = math.cos(bearing_difference / 2)
+            score = (self.familiar.get(key, 0)
+                    - a * value['distance']
+                    + b
+                    - c * value.get('population', 0)
+                    + d * cosine_of_bearing
+                    - e * G.nodes[key].get('fatalities', 0))
+            if score > 0:
+                scores[key] = score
 
-        if iscamp:
-            c = 1/200
-        else:
-            c=0
-        
-        # Compute scores using familiarity and distance
-        scores = {key: self.familiar.get(key, 0) - a * distances[key]['distance'] + b - c*distances[key]['population'] 
-                  + math.cos(bearings[key]/2) - e * G.nodes[key]['fatalities'] for key in distances}
-        
-        # Calculate total sum of scores (only positive scores contribute to the roulette wheel)
-        total_score_sum = sum(max(score, 0) for score in scores.values())
-
+        total_score_sum = sum(scores.values())
         if total_score_sum == 0:
             return None
-        
-        # Normalize scores to probabilities
-        probabilities = {key: max(scores[key], 0) / total_score_sum for key in scores}
-        
-        # Prepare for roulette wheel selection
+
+        # Normalize scores to probabilities and prepare for roulette wheel selection
         cumulative_prob = 0.0
         cumulative_probs = []
-        keys_sorted = sorted(probabilities.keys())  # Ensure consistent order
-        for key in keys_sorted:
-            cumulative_prob += probabilities[key]
+        for key, score in scores.items():
+            cumulative_prob += score / total_score_sum
             cumulative_probs.append((cumulative_prob, key))
         
-        # Generate a random number and select key based on cumulative probabilities
+        # Select key based on cumulative probabilities
         r = random.random()
         for cumulative_prob, key in cumulative_probs:
             if r <= cumulative_prob:
                 return key
-                
+
         # In case of rounding errors, return the last key
-        return keys_sorted[-1]
+        return key  # Use the last key outside the loop to handle rounding errors
 
     #@profile 
     def indirect_check(self, G, start_node,current_date):

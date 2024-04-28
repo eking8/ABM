@@ -135,7 +135,7 @@ class Location:
                         for agent in group:
                             if agent!=1:
                                 agent.group=group
-                                print([x.id for x in group])
+                                #print([x.id for x in group])
                         Agents[id].is_leader=True
                         group_size=abs(random.normalvariate(10,4))
                         Agents[id].ingroup=True

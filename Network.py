@@ -27,7 +27,7 @@ def create_graph(locations):
         # Add edges with border crossing information
         for conn in loc.connections:
             bearing = calculate_bearing(loc.latitude, loc.longitude, conn['location'].latitude, conn['location'].longitude)
-            G.add_edge(loc.name, conn['location'].name, weight=round(conn['distance'], 3), crosses_border=conn['crosses_border'], bearing=bearing)
+            G.add_edge(loc.name, conn['location'].name, weight=round(conn['distance'], 3), crosses_border=conn['crosses_border'], bearing=bearing, travelled=0)
 
     # print("Graph initialised.")
     

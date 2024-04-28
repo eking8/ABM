@@ -2,16 +2,12 @@
 
 TO DO
 
-
-
-~ 5hr (Speed and simplicity update)
-- employ optimisation techniques Y
-
 ~ 7hr (Further agent logic update)
 - Link frequency (4hr) Y
 - Danger of current node stored as well as nogos (1hr) Y
 - Danger of indirect nodes stored (1hr) Y
 - Merge dangers
+- Indirect checks must be on filtered graph
 
 ~ 8hr (Futher Strategic Group formation update)
 - Include logic for splitting and joining at each node
@@ -26,6 +22,7 @@ TO DO
 ~?  (Validation update)
 - Errors in output
 - Find a way to apply the validation technique of upsising from flee 
+- I think so far that the indirect check on camps is silly
 
 
 COMMON BUGS
@@ -33,7 +30,7 @@ COMMON BUGS
 - Bar only completing to 99.8%
 - Look if agents get stuck between nogos, if so disregard nogos in conflict
 - Check comments
-- I dont really get the whole kidals and bamakos thing and think it could be removed
+
 
 """
 
