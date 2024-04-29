@@ -112,8 +112,10 @@ class Agent:
 
         if self.capitalbracket == 'Poor': # No access to car
             self.speed = abs(np.random.normal(200,50))
+            self.origspeed=self.speed
         else:
             self.speed = abs(np.random.normal(400, 100))
+            self.origspeed=self.speed
 
     def update_danger(self,fat):
         if self.location in self.dangers:
@@ -347,6 +349,7 @@ class Agent:
         if val==1:
             self.status='Dead'
             self.location = 'Dead'
+            self.instratgroup=False
 
             if self.ingroup:
                 if self.is_leader:
@@ -354,7 +357,7 @@ class Agent:
                     if max_member:
                         max_member.is_leader=True   
                     else:
-                        for member in self.fam:
+                        for member in self.group:
                             member.joingroup(all_agents) 
                 for agent in self.group:
                     if self in agent.group:
@@ -626,6 +629,82 @@ class Agent:
                 if G_filtered.nodes[neighbor].get('has_conflict', False):
                     for agent in self.group:
                         agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
+    
+    def check_kick_out(self,ags):
+        N=len(self.group)
+        speed_norm=self.speed/self.origspeed
+        idv_ut=self.lam*1+(1-self.lam)*0.5/N
+        grp_ut=self.lam*speed_norm+(1-self.lam)*(N-0.5)/N
+        if idv_ut>grp_ut:
+            self.kickout(ags)
+    
+    def kickout(self,ags):
+        if self.is_leader:
+            if self.is_leader:
+                max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
+                if max_member:
+                    self.ingroup=False
+                    self.instratgroup=False
+                    max_member.is_leader=True   
+                    for agent in self.group:
+                        if self in agent.group and agent != self:
+                            agent.group.remove(self)
+                    self.group=[self]
+                else:
+                    for member in self.group:
+                        member.ingroup=False
+                        member.instratgroup=False
+                        member.group=[member]
+                        member.joingroup(ags) 
+            else:
+                for agent in self.group:
+                    if agent != self:
+                        agent.group.remove(self)
+                    else:
+                        self.is_leader=True
+                        self.ingroup=False
+                        self.instratgroup=False
+                        self.group=[self]
+                
+
+    def super_imp(self,other):
+        
+        N1=len(self.group)
+        N2=len(other.group)
+        if self.speed>other.speed:
+            speed_norm_1=1
+            speed_norm_2=other.speed/self.speed
+            speed_norm_12=speed_norm_2
+        else:
+            speed_norm_1=self.speed/other.speed
+            speed_norm_2=1
+            speed_norm_12=speed_norm_1
+        
+        U1=self.lam*speed_norm_1+(1-self.lam)*(N1-0.5)/(N1+N2)
+        U2=self.lam*speed_norm_2+(1-self.lam)*(N2-0.5)/(N1+N2)
+
+        U12 = self.lam*speed_norm_12+(1-self.lam)*(N1+N2-0.5)/(N1+N2)
+
+        if U12>U1 and U12>U2:
+            # Merge groups
+
+            leader=random.choice([self,other])
+            newgroup=[]
+            merged_nogos = self.nogos.union(other.nogos)
+            for lead in [self,other]:
+                newgroup+=lead.group
+                if lead!=leader:
+                    lead.is_leader=False
+                    speed2=lead.speed
+
+            newspeed=min(leader.speed,speed2)
+            for ag in newgroup:
+                ag.group=newgroup
+                ag.nogos=merged_nogos
+                ag.speed=newspeed
+                    
+
+
                 
 
 
@@ -674,7 +753,7 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
     
     distances, paths = nx.single_source_dijkstra(G_filtered, start_node)
     camp_paths_distances = {}
-    for node, data in G.nodes(data=True):
+    for node, data in G_filtered.nodes(data=True):
         if G.nodes[node].get('type') == 'Camp' and node in paths and G.nodes[node].get('is_open'):
             if data.get('country',None) in ['Niger','Burkina Faso'] and current_date < pd.Timestamp(datetime(2012, 2, 21).date()):
                 pass # boarder does not open before 21st feb

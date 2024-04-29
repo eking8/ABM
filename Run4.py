@@ -2,10 +2,6 @@
 
 TO DO
 
-~ 7hr (Further agent logic update)
-- Danger of current node stored as well as nogos (1hr) Y
-- Indirect checks must be on filtered graph
-
 ~ 8hr (Futher Strategic Group formation update)
 - Include logic for splitting and joining at each node
 
@@ -21,6 +17,8 @@ TO DO
 - Errors in output
 - Find a way to apply the validation technique of upsising from flee 
 - I think so far that the indirect check on camps is silly
+- Nothing should have self.checked=False at the end
+- Fine tune the lambda
 
 
 COMMON BUGS
@@ -799,7 +797,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 300 # TO VARY
+frac = 1000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -827,30 +825,70 @@ Agent.initialise_populations(cities+camps,total_population)
 Agents = {}
 ags = []
 
-print("Forming families... \n")
+print("Creating Agents... \n")
+
+agent_t1=time.time()
 for i in list(range(1,n_agents+1)):
     Agents[i] = Agent(i)
     loc_dic[Agents[i].location].addmember(i)
     ags.append(Agents[i])
+    print(f'\rProgress: {i} Agents', end='', flush=True)
 
+agent_t2=time.time()
+print("\n \n")
+print("...finished in: "+ str(agent_t2-agent_t1) + "\n")
+
+
+print("Forming families... \n")
+o=0
+fam_t1=time.time()
 for agent in ags:
     agent.form_families(ags)
+    o+=1
+    print(f'\rProgress: {o} Agents', end='', flush=True)
+print("\n \n")
+fam_t2=time.time()
 
-
-
-
+print("...finished in: "+ str(fam_t2-fam_t1) + "\n")
+print("Joining dependents to families... \n")
+o=0
+depen_t1=time.time()
 for agent in ags:
     agent.join_dependents(ags)
+    o+=1
+    print(f'\rProgress: {o} Agents', end='', flush=True)
 
-    
+print("\n \n")
+depen_t2=time.time()
 
+print("...finished in: "+ str(depen_t2-depen_t1) + "\n")
+
+print("Forming family groups... \n")
+o=0
+fam_groups_t1=time.time()
 for agent in ags: # must initialise new for loop to ensure all families initialised
     agent.form_fam_group()
+    o+=1
+    print(f'\rProgress: {o} Agents', end='', flush=True)
+fam_groups_t2=time.time()
+print("\n \n")
+print("...finished in: "+ str(fam_groups_t2-fam_groups_t1) + "\n")
 
+print("Forming strategic groups... \n")
+o=0
+strat_groups_t1=time.time()
 for loc in locations:
     loc.form_strat_group(Agents)
+    o+=1
+    print(f'\rProgress: {o} Locations', end='', flush=True)
+strat_groups_t2=time.time()
+print("\n \n")
+print("...finished in: "+ str(strat_groups_t2-strat_groups_t1) + "\n")
 
-    
+print("Finish defining groups... \n")
+
+
+def_groups_t1=time.time()
 for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
     agent.define_groups(ags)
     #print([x.id for x in agent.fam])
@@ -860,11 +898,17 @@ for agent in ags: # must initialise new for loop to ensure all proabilities of t
     #print(agent.checked)
     #print(agent.travelswithfam)
     #print("\n\n\n")
+def_groups_t2=time.time()
 
+print("...finished in: "+ str(def_groups_t2-def_groups_t1) + "\n")
 
-
+print("Speed and captial normalisation... \n")
+speeds_t1=time.time()
 for agent in ags: # must initialise new group to ensure all family travelling groups initialised
     agent.group_speeds_and_cap()
+speeds_t2=time.time()
+
+print("...finished in: "+ str(speeds_t2-speeds_t1) + "\n")
 
 """
 # FAM GROUP B.U.G FIX
@@ -897,6 +941,10 @@ statuses = {x:[] for x in ['Dead','IDP','Returnee','Refugee','Resident','Fleeing
 total_agents = len(Agents)
 
 days = 0
+
+fin_sim_t=time.time()
+
+print("Total set up finished in: "+ str(fin_sim_t-start_time) + "\n")
 
 print("Starting simulation...")
 
@@ -1002,7 +1050,6 @@ for current_date in dates:
             print("Fassala shouldn\'t be a long term destination")
             
 
-                
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,camps)
         
         if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
@@ -1065,6 +1112,16 @@ for current_date in dates:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
             Agents[id].moved_today=False
+
+            if Agents[id].instratgroup:
+            
+                Agents[id].check_kick_out(ags)
+
+                if Agents[id].is_leader:
+                    for loc_id in loc_dic[Agents[id].location].members:
+                        if loc_id!=id and Agents[loc_id].is_leader and Agents[loc_id].instratgroup:
+                            Agents[id].super_imp(Agents[loc_id])
+                                            
         if Agents[id].status!='Dead' and Agents[id].location != 'Abroad':
             try:
                 country = loc_dic[Agents[id].location].country
