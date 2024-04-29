@@ -2,6 +2,10 @@
 
 TO DO
 
+~ 7hr (Further agent logic update)
+- Danger of current node stored as well as nogos (1hr) Y
+- Indirect checks must be on filtered graph
+
 ~ 8hr (Futher Strategic Group formation update)
 - Include logic for splitting and joining at each node
 
@@ -17,8 +21,7 @@ TO DO
 - Errors in output
 - Find a way to apply the validation technique of upsising from flee 
 - I think so far that the indirect check on camps is silly
-- Nothing should have self.checked=False at the end
-- Fine tune the lambda
+- Confirm kicking out mechanism works
 
 
 COMMON BUGS
@@ -797,7 +800,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 1000 # TO VARY
+frac = 2000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -1050,6 +1053,7 @@ for current_date in dates:
             print("Fassala shouldn\'t be a long term destination")
             
 
+                
         Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,camps)
         
         if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
@@ -1089,7 +1093,7 @@ for current_date in dates:
             loc_dic[Agents[id].shortterm].addmember(id)
 
             try:
-                loc_dic[Agents[id].location].removemember(id)
+                loc_dic[Agents[id].location].removemember(id,Agents)
                 #print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
                 #print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
                 #print("\n")
@@ -1098,6 +1102,7 @@ for current_date in dates:
 
             
             if Agents[id].location!=Agents[id].shortterm:
+
                 G.nodes[Agents[id].location]['population'] -= 1 # update nodes
                 G.nodes[Agents[id].shortterm]['population'] += 1
             
@@ -1111,17 +1116,32 @@ for current_date in dates:
             if not Agents[id].merged:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
+
+            if Agents[id].instratgroup and Agents[id].moving:
+                
+                if Agents[id].location=='Fassala' and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
+                    pass
+                else:
+                    Agents[id].check_kick_out(ags)
+
+                    if Agents[id].is_stuck:
+                        Agents[id].speed_focus()
+                    
+                    if Agents[id].is_leader:
+                        for loc_id in loc_dic[Agents[id].location].members:
+                            if loc_id!=id and Agents[loc_id].is_leader and Agents[loc_id].instratgroup and not Agents[loc_id].comb and Agents[id].longterm==Agents[loc_id].longterm and Agents[loc_id].moving and Agents[loc_id].shortterm==Agents[id].shortterm:
+                                Agents[id].super_imp(Agents[loc_id])
+                                Agents[id].comb=True
+                                Agents[loc_id].comb=True
+                    
+
             Agents[id].moved_today=False
 
-            if Agents[id].instratgroup:
-            
-                Agents[id].check_kick_out(ags)
+        for id in Agents:
+            Agents[id].comb=False
 
-                if Agents[id].is_leader:
-                    for loc_id in loc_dic[Agents[id].location].members:
-                        if loc_id!=id and Agents[loc_id].is_leader and Agents[loc_id].instratgroup:
-                            Agents[id].super_imp(Agents[loc_id])
-                                            
+
+
         if Agents[id].status!='Dead' and Agents[id].location != 'Abroad':
             try:
                 country = loc_dic[Agents[id].location].country
@@ -1395,3 +1415,5 @@ with open(csv_file3, 'w', newline='') as file:
     for i in range(len(countries['Date'])):
         row = {key: countries[key][i] for key in countries.keys()}
         writer.writerow(row)
+
+

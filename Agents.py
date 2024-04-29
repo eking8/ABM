@@ -101,6 +101,7 @@ class Agent:
         self.direction=None
         self.dangers={}
         self.instratgroup=False
+        self.comb=False
         
 
         if rand_n>0.9965: # capital 100000
@@ -359,9 +360,11 @@ class Agent:
                     else:
                         for member in self.group:
                             member.joingroup(all_agents) 
+                minspeed = min([x.origspeed for x in self.group if x!=self])
                 for agent in self.group:
                     if self in agent.group:
                         agent.group.remove(self)
+                        agent.speed=minspeed
                 
             
             
@@ -632,42 +635,63 @@ class Agent:
     
     def check_kick_out(self,ags):
         N=len(self.group)
-        speed_norm=self.speed/self.origspeed
-        idv_ut=self.lam*1+(1-self.lam)*0.5/N
-        grp_ut=self.lam*speed_norm+(1-self.lam)*(N-0.5)/N
-        if idv_ut>grp_ut:
-            self.kickout(ags)
+        if N>1:
+            if self.origspeed==self.speed:
+                # group bottleneck
+                second_slowest=min([x.origspeed for x in self.group if x!=self])
+                speed_norm=self.speed/second_slowest
+                grp_ut=self.lam*speed_norm+(1-self.lam)*(N-0.5)/N
+                w0_ut=self.lam*1+(1-self.lam)*(N-1.5)/N
+            
+                if w0_ut>grp_ut:
+                        self.kickout(ags)
+        else:
+            self.ingroup=False
+            self.instratgroup=False
+            self.is_leader=True
     
     def kickout(self,ags):
         if self.is_leader:
-            if self.is_leader:
-                max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
-                if max_member:
+            max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
+            if max_member:
+                self.ingroup=False
+                self.instratgroup=False
+                max_member.is_leader=True   
+                minspeed=min([x.origspeed for x in self.group])
+                for agent in self.group:
+                    if self in agent.group and agent != self:
+                        agent.group.remove(self)
+                        agent.speed=minspeed
+
+                self.group=[self]
+
+            else:
+                for member in self.group:
+                    member.ingroup=False
+                    member.instratgroup=False
+                    member.group=[member]
+                    member.joingroup(ags) 
+                    member.speed=member.origspeed
+        else:
+            minspeed=min([x.speed for x in self.group if x != self])
+            for agent in self.group:
+                if agent != self:
+                    agent.group.remove(self)
+                    agent.speed=minspeed
+                else:
+                    self.is_leader=True
                     self.ingroup=False
                     self.instratgroup=False
-                    max_member.is_leader=True   
-                    for agent in self.group:
-                        if self in agent.group and agent != self:
-                            agent.group.remove(self)
                     self.group=[self]
-                else:
-                    for member in self.group:
-                        member.ingroup=False
-                        member.instratgroup=False
-                        member.group=[member]
-                        member.joingroup(ags) 
-            else:
-                for agent in self.group:
-                    if agent != self:
-                        agent.group.remove(self)
-                    else:
-                        self.is_leader=True
-                        self.ingroup=False
-                        self.instratgroup=False
-                        self.group=[self]
+                    self.speed=self.origspeed
+                    if 16<self.age<65:
+                        self.joingroup(ags)
                 
 
     def super_imp(self,other):
+
+        if other in self.group:
+            print('There must not be 2 leaders in same group')
         
         N1=len(self.group)
         N2=len(other.group)
@@ -688,20 +712,26 @@ class Agent:
         if U12>U1 and U12>U2:
             # Merge groups
 
-            leader=random.choice([self,other])
-            newgroup=[]
+        
+            newgroup=self.group+other.group
             merged_nogos = self.nogos.union(other.nogos)
-            for lead in [self,other]:
-                newgroup+=lead.group
-                if lead!=leader:
-                    lead.is_leader=False
-                    speed2=lead.speed
 
-            newspeed=min(leader.speed,speed2)
+            other.is_leader=False
+            
+            newspeed=min(self.speed,other.speed)
             for ag in newgroup:
                 ag.group=newgroup
                 ag.nogos=merged_nogos
                 ag.speed=newspeed
+
+    def speed_focus(self):
+        if self.lam<0.95:
+            self.lam+=0.05
+        elif self.lam==1:
+            pass
+        else:
+            self.lam=1
+
                     
 
 

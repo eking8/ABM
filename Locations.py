@@ -78,12 +78,16 @@ class Location:
         self.population += 1
 
     #@profile
-    def removemember(self,id):
+    def removemember(self,id,Agents):
         if id in self.members:
             self.members.remove(id)
             self.population -= 1
         else:
             print(str(id) + " not in " + str(self.name))
+            print(self.members)
+            print(Agents[id].location)
+            print(Agents[id].instratgroup)
+            print([x.id for x in Agents[id].group])
             sys.exit(1)
 
     #@profile
