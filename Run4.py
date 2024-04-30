@@ -2,12 +2,6 @@
 
 TO DO
 
-~ 7hr (Further agent logic update)
-- Danger of current node stored as well as nogos (1hr) Y
-- Indirect checks must be on filtered graph
-
-~ 8hr (Futher Strategic Group formation update)
-- Include logic for splitting and joining at each node
 
 ~ 7hr(Communication update)
 - Danger of nodes (directly visited) communicated (2hr) Y
@@ -29,6 +23,8 @@ COMMON BUGS
 - Bar only completing to 99.8%
 - Look if agents get stuck between nogos, if so disregard nogos in conflict
 - Check comments
+
+RUN ON CLUSTER?
 
 
 """
@@ -800,7 +796,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 2000 # TO VARY
+frac = 300 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -1387,7 +1383,7 @@ for id in Agents:
     else:
         print(colors.RED + Agents[id].location + colors.END)
 """
-# draw_graph(G, current_date, distances_on=True)
+draw_graph(G, current_date, distances_on=False)
 
 csv_file2= 'Status_splits.csv'
 

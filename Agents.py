@@ -102,6 +102,8 @@ class Agent:
         self.dangers={}
         self.instratgroup=False
         self.comb=False
+        self.media= np.random.uniform(0,1)<=0.06
+        self.contacts=[]
         
 
         if rand_n>0.9965: # capital 100000
@@ -506,7 +508,7 @@ class Agent:
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
-        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged]
+        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged and agent not in self.group and agent.status!='Dead']
 
         # Randomly select 1-3 agents to interact with
         number_of_agents = random.randint(0, 3)
@@ -515,16 +517,29 @@ class Agent:
         if number_of_agents>0:
             self.merged=True
 
+
+            
+
         # Merge the nogo lists
         for agent in selected_agents:
-            if agent in self.fam:
-                agent.merged=True
-                # Update each agent's nogo list
-                combined_nogos = self.nogos.union(agent.nogos)
-                self.nogos = agent.nogos = combined_nogos
-                # familiar destinations passed on
-                self.familiar[agent.longterm] = self.familiar.get(agent.longterm, 0) + 1
-                agent.familiar[self.longterm] = agent.familiar.get(self.longterm, 0) + 1
+
+            if agent.media and self.media:
+                agent.contacts.append(self)
+                self.contacts.append(agent)
+
+            agent.merged=True
+            # Update each agent's nogo list
+            combined_nogos = self.nogos.union(agent.nogos)
+            self.nogos = agent.nogos = combined_nogos
+            # familiar destinations passed on
+            self.familiar[agent.longterm] = self.familiar.get(agent.longterm, 0) + 1
+            agent.familiar[self.longterm] = agent.familiar.get(self.longterm, 0) + 1
+            for key, value in agent.dangers.items():
+                if key in self.dangers:
+                    self.dangers[key] += value
+                else:
+                    self.dangers[key] = value
+            agent.dangers=self.dangers
                 
 
                 
@@ -716,6 +731,14 @@ class Agent:
             newgroup=self.group+other.group
             merged_nogos = self.nogos.union(other.nogos)
 
+            merged_dangers = self.dangers.copy()
+
+            for key, value in other.dangers.items():
+                if key in merged_dangers:
+                    merged_dangers[key] += value
+                else:
+                    merged_dangers[key] = value
+
             other.is_leader=False
             
             newspeed=min(self.speed,other.speed)
@@ -723,6 +746,7 @@ class Agent:
                 ag.group=newgroup
                 ag.nogos=merged_nogos
                 ag.speed=newspeed
+                ag.dangers=merged_dangers
 
     def speed_focus(self):
         if self.lam<0.95:
