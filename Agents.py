@@ -104,6 +104,7 @@ class Agent:
         self.comb=False
         self.media= np.random.uniform(0,1)<=0.06
         self.contacts=[]
+        self.contacts_in_camp={}
         
 
         if rand_n>0.9965: # capital 100000
@@ -458,6 +459,12 @@ class Agent:
                                 agent.location = 'Abroad'
                                 agent.been_abroad = True
                                 self.status='International Refugee'
+                        
+                            for agent2 in self.contacts:
+                                if agent.location in agent2.contacts_in_camp:
+                                    agent2[agent.location]+=1
+                                else:
+                                    agent2[agent.location]=1
 
                             # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                             
@@ -508,7 +515,7 @@ class Agent:
         :param all_agents: List of all Agent instances
         """
         # Filter agents in the same city and not the same agent
-        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged and agent not in self.group and agent.status!='Dead']
+        local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged and agent not in self.group and agent.status!='Dead' and agent.is_leader]
 
         # Randomly select 1-3 agents to interact with
         number_of_agents = random.randint(0, 3)
@@ -540,6 +547,16 @@ class Agent:
                 else:
                     self.dangers[key] = value
             agent.dangers=self.dangers
+            for agent2 in agent.group:
+                agent2.dangers=agent.dangers
+                agent2.nogos=agent.nogos
+                agent2.familiar=agent.familiar
+
+
+        for agent in self.group:
+            agent.dangers=self.dangers
+            agent.nogos=self.nogos
+            agent.familiar=self.familiar
                 
 
                 
