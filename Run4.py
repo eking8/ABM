@@ -3,9 +3,6 @@
 TO DO
 
 
-~ 7hr(Communication update)
-- Contacts in other camps can influence camp utility (1hr) 
-
 ~?  (Validation update)
 - Errors in output
 - Find a way to apply the validation technique of upsising from flee 
@@ -788,7 +785,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 300 # TO VARY
+frac = 300000 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -1405,3 +1402,5 @@ with open(csv_file3, 'w', newline='') as file:
         writer.writerow(row)
 
 
+print("nodes: " + str(len(G.nodes)))
+print("edges: " + str(len(G.edges)))

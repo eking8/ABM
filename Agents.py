@@ -381,7 +381,8 @@ class Agent:
    # @profile
     def assess_situation_and_move_if_needed(self,G,city,current_date,camps):
 
-        
+        if self.ingroup and len(self.group)==1:
+            self.ingroup=False
 
         removal_threshold = timedelta(days=10) # Change this to something smarter
         default_date = datetime(2012, 1, 1) - removal_threshold
@@ -462,9 +463,9 @@ class Agent:
                         
                             for agent2 in self.contacts:
                                 if agent.location in agent2.contacts_in_camp:
-                                    agent2[agent.location]+=1
+                                    agent2.contacts_in_camp[agent.location]+=1
                                 else:
-                                    agent2[agent.location]=1
+                                    agent2.contacts_in_camp[agent.location]=1
 
                             # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
                             
