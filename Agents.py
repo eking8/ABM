@@ -568,7 +568,8 @@ class Agent:
     def roulette_select(self, G, startnode, distances, iscamp):
         """
         Select a key from the distances dictionary using roulette method,
-        where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction) - e*fatalities'
+        where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction) - e*fatalities
+        + f*number travelled on first link + g*number of contacts made to camp'
 
         The agents have a utility to:
         - Familiarity
@@ -593,6 +594,7 @@ class Agent:
         d = 50  # could be refined further
         e = 10
         f = 1 # must be refined further
+        g = 1
 
         scores = {}
         for key, value in distances.items():
@@ -615,7 +617,8 @@ class Agent:
                     - c * value.get('population', 0)
                     + d * cosine_of_bearing
                     - e * G.nodes[key].get('fatalities', 0)
-                    + f * value['travelled'])
+                    + f * value['travelled']
+                    + g* self.contacts_in_camp.get(key,0))
     
             if score > 0:
                 scores[key] = score

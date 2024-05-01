@@ -4,17 +4,11 @@ TO DO
 
 
 ~ 7hr(Communication update)
-- Danger of nodes (directly visited) communicated (2hr) Y
-^ apply in logic (merging)
-- Quick revision of routes and rumours (2hr)
-- Contact list stored alongside nogos and danger (1hr)
-- Agent notified if contact makes it to another country/camp (1hr)
-- Contacts in other camps can influence camp utility (1hr)
+- Contacts in other camps can influence camp utility (1hr) 
 
 ~?  (Validation update)
 - Errors in output
 - Find a way to apply the validation technique of upsising from flee 
-- I think so far that the indirect check on camps is silly
 - Confirm kicking out mechanism works
 
 
@@ -23,9 +17,7 @@ COMMON BUGS
 - Bar only completing to 99.8%
 - Look if agents get stuck between nogos, if so disregard nogos in conflict
 - Check comments
-
-RUN ON CLUSTER?
-
+- Check that the contact logic actually works on around 6% I cant tell rn cause these guys are chatting in the library REALLY FUCKING LOUDLY
 
 """
 
@@ -1109,7 +1101,7 @@ for current_date in dates:
 
             
 
-            if not Agents[id].merged:
+            if not Agents[id].merged and Agents[id].is_leader:
                 Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
             
 
