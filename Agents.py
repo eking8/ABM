@@ -6,6 +6,7 @@ from Visualisations import colors
 import math as math
 from datetime import timedelta
 import pandas as pd
+import sys
 
 
 class Agent:
@@ -54,7 +55,7 @@ class Agent:
             )
         return val
     
-    # @profile
+
     def __init__(self, id, status = 'Resident', age=None, is_leader=False,location=None):
         self.id = id
 
@@ -99,7 +100,6 @@ class Agent:
         self.distance_traveled_since_rest=0
         self.moved_today=False
         self.direction=None
-        self.dangers={}
         self.instratgroup=False
         self.comb=False
         self.media= np.random.uniform(0,1)<=0.06
@@ -121,13 +121,7 @@ class Agent:
             self.speed = abs(np.random.normal(400, 100))
             self.origspeed=self.speed
 
-    def update_danger(self,fat):
-        if self.location in self.dangers:
-            self.dangers[self.location]+=fat
-        else:
-            self.dangers[self.location]=fat
     
-    # @profile
     def form_families(self,all_agents):     
 
 
@@ -160,7 +154,7 @@ class Agent:
 
                 self.is_leader=True
             
-    # @profile
+
     def join_dependents(self,all_agents):
         if not self.in_family and not self.is_leader:
             if self.age>65 or self.age<16:
@@ -188,7 +182,7 @@ class Agent:
         
 
             
-    # @profile           
+          
     def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
         # bayesian calculation on phone 
         if 16<self.age<65:
@@ -207,7 +201,7 @@ class Agent:
 
     
 
-    # @profile
+
     def define_groups(self,all_agents):
         if self.in_family and not self.ingroup and not self.checked:
             
@@ -263,7 +257,7 @@ class Agent:
         
                     
 
-    # @profile
+
     def joingroup(self,all_agents):
         available_leaders = [agent for agent in all_agents if agent.location == self.location 
                              and agent.id != self.id and agent.is_leader and 16 <= agent.age <= 65]
@@ -306,7 +300,7 @@ class Agent:
 
 
             
-    # @profile
+
     def group_speeds_and_cap(self):
         
         self.speed = min(x.speed for x in self.group)
@@ -318,7 +312,7 @@ class Agent:
     # Calculate the cumulative distribution
     cumulative_distribution = np.cumsum(probabilities)
 
-    # @profile
+
     def generate_random_age(self):
         # Generate a random float in the range [0, 1)
         rand = np.random.random()
@@ -347,54 +341,52 @@ class Agent:
         choices = ['M', 'F']
         return random.choices(choices, weights=probabilities, k=1)[0]
     
-    # @profile
-    def kill(self, frac,all_agents):
-        val = random.randint(1, frac)
-        if val==1:
-            self.status='Dead'
+    def kill(self, frac, all_agents):
+        # Determine if the agent will die based on random chance
+        if random.randint(1, frac) == 1:
+            self.status = 'Dead'
             self.location = 'Dead'
-            self.instratgroup=False
+            self.instratgroup = False
 
+            # Handle group-related logic only if the agent is part of a group
             if self.ingroup:
-                if self.is_leader:
-                    max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
-                    if max_member:
-                        max_member.is_leader=True   
-                    else:
-                        for member in self.group:
-                            member.joingroup(all_agents) 
-                minspeed = min([x.origspeed for x in self.group if x!=self])
-                for agent in self.group:
-                    if self in agent.group:
-                        agent.group.remove(self)
-                        agent.speed=minspeed
-                
-            
-            
-            agents = self.group
-            for agent in agents:
-                if self in agent.group:
-                    agent.group.remove(self)
+                # Define variables to determine the new leader and speed adjustment
+                new_leader = None
+                min_speed = float('inf')
+
+                # Iterate once through the group members
+                for member in self.group:
+                    if member.status != 'Dead' and member.age < 65:
+                        # Determine potential new leader
+                        if new_leader is None or member.age > new_leader.age:
+                            new_leader = member
+                    # Calculate the minimum speed of alive agents excluding self
+                    if member != self:
+                        min_speed = min(min_speed, member.origspeed)
+                    # Remove self from all member's groups
+                    if self in member.group:
+                        member.group.remove(self)
+
+                # Assign new leader if available
+                if new_leader:
+                    new_leader.is_leader = True
+                else:
+                    # If no new leader, all members join other groups
+                    for member in self.group:
+                        member.joingroup(all_agents)
+
+                # Apply the minimum speed to all group members
+                for member in self.group:
+                    member.speed = min_speed
 
         
 
-   # @profile
-    def assess_situation_and_move_if_needed(self,G,city,current_date,camps):
+    def assess_situation_and_move_if_needed(self,G,city,current_date):
+
+        
 
         if self.ingroup and len(self.group)==1:
             self.ingroup=False
-
-        removal_threshold = timedelta(days=10) # Change this to something smarter
-        default_date = datetime(2012, 1, 1) - removal_threshold
-        special_date = datetime(2012, 3, 18)
-
-        self.nogos = set([
-            loc for loc in self.nogos if 
-            (loc == "Fassala" and current_date > special_date) or not any(
-                loc == camp.name and (current_date - (getattr(camp, 'last_conflict_date') if getattr(camp, 'last_conflict_date') is not None else default_date)) > removal_threshold
-                for camp in camps
-            )
-        ])
                      
         if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
             
@@ -426,8 +418,8 @@ class Agent:
                     cooldown=22 # 1/3 chance of moving on 100km walked
 
                 rest_prob = 1-math.exp(-(self.distance_traveled_since_rest+100)*cooldown/3300) # at 14 days after conflict, 200km walked, and 10 people stopping should be 1/3 chance of moving
-            
-                if random.random()>rest_prob or city.name=='Fassala':
+
+                if random.random()>rest_prob or (city.name=='Fassala' and current_date >= pd.Timestamp(datetime(2012, 3, 19).date())):
 
                     self.moved_today=True
                     
@@ -471,7 +463,7 @@ class Agent:
                             
                             # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
                         
-                
+                    
                     
                     destination_dict = None
 
@@ -509,7 +501,12 @@ class Agent:
                     self.distance_traveled_since_rest=0 # reset after rest
                     city.waited_days+=len(self.group)
 
-    # @profile
+        elif self.is_stuck:
+            if city:
+                if set(G.neighbors(city.name)).issubset(self.nogos):
+                    for neighbor in G.neighbors(city.name):
+                        self.nogos.remove(neighbor)
+
     def merge_nogo_lists(self, all_agents):
         """
         This method allows an agent to merge their 'nogos' set with those of 0-3 other agents in the same city.
@@ -542,20 +539,13 @@ class Agent:
             # familiar destinations passed on
             self.familiar[agent.longterm] = self.familiar.get(agent.longterm, 0) + 1
             agent.familiar[self.longterm] = agent.familiar.get(self.longterm, 0) + 1
-            for key, value in agent.dangers.items():
-                if key in self.dangers:
-                    self.dangers[key] += value
-                else:
-                    self.dangers[key] = value
-            agent.dangers=self.dangers
+
             for agent2 in agent.group:
-                agent2.dangers=agent.dangers
                 agent2.nogos=agent.nogos
                 agent2.familiar=agent.familiar
 
 
         for agent in self.group:
-            agent.dangers=self.dangers
             agent.nogos=self.nogos
             agent.familiar=self.familiar
                 
@@ -564,8 +554,7 @@ class Agent:
         
         
 
-
-    # @profile   
+ 
     def roulette_select(self, G, startnode, distances, iscamp):
         """
         Select a key from the distances dictionary using roulette method,
@@ -589,62 +578,59 @@ class Agent:
             print('No routes')
             return None
 
+        # Define constants and parameters
         a = self.age / 1000
-        b = 50  # bias assumed to be 50 
+        b = 50  # Constant bias
         c = 1/200 if iscamp else 0
-        d = 50  # could be refined further
+        d = 50  # Cosine multiplication factor
         e = 10
-        f = 1 # must be refined further
+        f = 1
         g = 1
 
         scores = {}
+        total_score_sum = 0
+
         for key, value in distances.items():
             if value['distance'] == 0:
-                continue  # skip routes with a distance of 0, as these can't be scored properly
-            
+                continue  # Skip zero distance
+
+            # Calculate bearing difference and its cosine
             bearing_difference = 0
-            if self.direction and 'bearing' in G.get_edge_data(startnode, value['path'][0]):
-                bearing_difference = self.direction - G.get_edge_data(startnode, value['path'][0])['bearing']
+            edge_data = G.get_edge_data(startnode, value['path'][0], default={})
+            if self.direction and 'bearing' in edge_data:
+                bearing_difference = self.direction - edge_data['bearing']
             
             cosine_of_bearing = math.cos(bearing_difference / 2)
-            
-            
-            
 
-
+            # Calculate the score using the given formula
             score = (self.familiar.get(key, 0)
                     - a * value['distance']
                     + b
                     - c * value.get('population', 0)
                     + d * cosine_of_bearing
                     - e * G.nodes[key].get('fatalities', 0)
-                    + f * value['travelled']
-                    + g* self.contacts_in_camp.get(key,0))
-    
+                    + f * value.get('travelled', 0)
+                    + g * self.contacts_in_camp.get(key, 0))
+
             if score > 0:
                 scores[key] = score
+                total_score_sum += score
 
-        total_score_sum = sum(scores.values())
         if total_score_sum == 0:
             return None
 
-        # Normalize scores to probabilities and prepare for roulette wheel selection
+        # Roulette wheel selection
+        r = random.random()
         cumulative_prob = 0.0
-        cumulative_probs = []
+
         for key, score in scores.items():
             cumulative_prob += score / total_score_sum
-            cumulative_probs.append((cumulative_prob, key))
-        
-        # Select key based on cumulative probabilities
-        r = random.random()
-        for cumulative_prob, key in cumulative_probs:
             if r <= cumulative_prob:
                 return key
 
-        # In case of rounding errors, return the last key
-        return key  # Use the last key outside the loop to handle rounding errors
-
-    #@profile 
+        # If no selection made due to rounding errors, return the last key considered
+        return key
+    
     def indirect_check(self, G, start_node,current_date):
 
         G_filtered = filter_graph_by_max_link_length(G, self.speed,start_node,self.nogos)
@@ -669,6 +655,7 @@ class Agent:
                     for agent in self.group:
                         agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
     
+
     def check_kick_out(self,ags):
         N=len(self.group)
         if N>1:
@@ -686,6 +673,7 @@ class Agent:
             self.instratgroup=False
             self.is_leader=True
     
+
     def kickout(self,ags):
         if self.is_leader:
             max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
@@ -724,6 +712,7 @@ class Agent:
                         self.joingroup(ags)
                 
 
+
     def super_imp(self,other):
 
         if other in self.group:
@@ -752,14 +741,6 @@ class Agent:
             newgroup=self.group+other.group
             merged_nogos = self.nogos.union(other.nogos)
 
-            merged_dangers = self.dangers.copy()
-
-            for key, value in other.dangers.items():
-                if key in merged_dangers:
-                    merged_dangers[key] += value
-                else:
-                    merged_dangers[key] = value
-
             other.is_leader=False
             
             newspeed=min(self.speed,other.speed)
@@ -767,7 +748,6 @@ class Agent:
                 ag.group=newgroup
                 ag.nogos=merged_nogos
                 ag.speed=newspeed
-                ag.dangers=merged_dangers
 
     def speed_focus(self):
         if self.lam<0.95:
@@ -777,27 +757,7 @@ class Agent:
         else:
             self.lam=1
 
-                    
-
-
-                
-
-
             
-            
-
-            
-
-                      
-                    
-
-                
-    
-
-    
-
-
-#@profile
 def camp_paths(G, start_node,max_link_length,current_date,nogo):
     """
     Finds shortest paths and distances from a given start node to all camps in the graph.
@@ -847,7 +807,6 @@ def camp_paths(G, start_node,max_link_length,current_date,nogo):
     
     return camp_paths_distances
 
-#@profile
 def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     """
     Finds the 5 nearest cities with an airport from the given start node, considering a maximum link length,
@@ -898,7 +857,6 @@ def find_nearest_cities_with_airport(G, start_node, max_link_length,nogo):
     return nearest_cities
 
 
-#@profile
 def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length, current_date,nogo):
     """
     Finds the shortest distance and respective paths from the start node to the closest city 
@@ -915,44 +873,42 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
     - dict: A dictionary where keys are city names (of closest cities in neighboring countries), 
       and values are dictionaries with 'distance' and 'path'.
     """
-    G_filtered = filter_graph_by_max_link_length(G, max_link_length,start_node,nogo=nogo)
+    G_filtered = filter_graph_by_max_link_length(G, max_link_length, start_node, nogo=nogo)
 
     if not G_filtered.has_node(start_node):
         print('Error: Start node is not present in the filtered graph.')
         return {}
 
-    pops={}
     results = {}
-    start_country = G.nodes[start_node].get('country', 'Not specified')
-    
+    start_country = G.nodes[start_node]['country'] if 'country' in G.nodes[start_node] else 'Not specified'
+
+    border_closure_date = pd.Timestamp(datetime(2012, 2, 21).date())
 
     for node, data in G_filtered.nodes(data=True):
-        country = data.get('country', None)
-        if country and country != start_country and G.nodes[node].get('type', None)=='City':
-            
-            # Apply the border closure rule for Niger and Burkina Faso
-            if country in ['Niger', 'Burkina Faso'] and current_date < pd.Timestamp(datetime(2012, 2, 21).date()):
-                continue  # Skip this city if the current date is before the border opening date
+        node_country = data.get('country')
+        node_type = G.nodes[node].get('type')
+
+        if node_country and node_country != start_country and node_type == 'City':
+            if node_country in ['Niger', 'Burkina Faso'] and current_date < border_closure_date:
+                continue
 
             try:
                 path_length = nx.shortest_path_length(G_filtered, start_node, node, weight='weight')
-                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')
-                path.remove(start_node)
-                pops[node]=data.get('population',0)
-                
-                if len(path)>0:
-                    trav=G[start_node][path[0]]['travelled']
-                else:
-                    trav=0
-                # If the city is closer than any previously found or if it's the first city found for this country
+                path = nx.shortest_path(G_filtered, start_node, node, weight='weight')[1:]  # Skip the start node
+
                 if node not in results or path_length < results[node]['distance']:
-                    results[node] = {'distance': path_length, 'path': path, 'population':pops[node],'travelled':trav}
+                    travelled = G[start_node][path[0]]['travelled'] if path else 0
+                    results[node] = {
+                        'distance': path_length,
+                        'path': path,
+                        'population': data.get('population', 0),
+                        'travelled': travelled
+                    }
             except nx.NetworkXNoPath:
                 pass  # No path exists to this node, ignore it
 
     return results
 
-#@profile
 def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     # Step 1: Create a new empty graph to hold the filtered graph
     G_filtered = nx.Graph()
@@ -972,7 +928,6 @@ def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
     
     return G_filtered
 
-#@profile
 def deathmech(members,fat):
     if fat==0:
         return None

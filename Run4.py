@@ -1,6 +1,7 @@
 """
 
-TO DO
+TO CHECK FOR SPEED
+- Check kill function (around 30s)
 
 
 ~?  (Validation update)
@@ -31,7 +32,7 @@ from Locations import City, Camp, total_pop
 from Agents import Agent, deathmech
 from Network import create_graph, draw_graph
 from Visualisations import colors, print_progress_bar
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 
 # populations from 2009 census https://www.citypopulation.de/en/mali/cities/
@@ -648,6 +649,40 @@ nema.add_connection(tombouctou)
 walatah.add_connection(mbera)
 nema.add_connection(tombouctou)
 
+def try_to_create_agent(i, birth_rate, loc_dic, Agents):
+    for attempt in range(10000):
+        rand_loc = Agent.randomloc()
+        for id in loc_dic[rand_loc].members:
+            member = Agents[id]
+            if member.is_leader and 16 < member.age < 65 and member.gender == 'F':
+                new_agent = Agent(i, age=0, is_leader=False, location=rand_loc)
+                Agents[i] = new_agent
+                member.fam.append(new_agent)
+                member.group.append(new_agent)
+
+                if not member.in_family:
+                    member.in_family = True
+                else:
+                    for agent in member.fam:
+                        agent.fam = member.fam
+
+                if not member.ingroup:
+                    member.ingroup = True
+                else:
+                    for agent in member.group:
+                        agent.group = member.group
+
+                return True  # Successfully created an agent
+    return False  # Failed to create an agent after all attempts
+
+def update_location_and_groups(i, loc_dic, Agents, total_agents, ags):
+    if i in Agents:
+        Agents[i].in_family = True
+        Agents[i].in_group = True
+        total_agents += 1
+        loc_dic[Agents[i].location].addmember(i)
+        ags.append(Agents[i])
+
 # Calculate the number of days in 2012
 start_date = pd.to_datetime('2012-01-01')
 end_date = pd.to_datetime('2013-01-01')
@@ -785,7 +820,7 @@ start_time = time.time()
 total_population = total_pop(cities)+28079
 
 #########################################################################################
-frac = 300000 # TO VARY
+frac = 300 # TO VARY
 #########################################################################################
 
 n_agents = int(total_population/frac)
@@ -937,7 +972,7 @@ print("Total set up finished in: "+ str(fin_sim_t-start_time) + "\n")
 print("Starting simulation...")
 
 for current_date in dates: 
-
+    
     """
     
     This is where the model will be ran in real time
@@ -947,7 +982,7 @@ for current_date in dates:
         
     print("\n")
     print(f"Simulating day: {current_date.strftime('%Y-%m-%d')}")
-
+    
     if current_date==datetime(2012, 3, 19).date():
         for id in Agents:
             Agents[id].nogos.add('Fassala')
@@ -970,7 +1005,7 @@ for current_date in dates:
             Agents[id].distance_traveled_since_rest=0
 
         
-
+    
 
     for ongoing_conflict in ongoing_conflicts:
         ongoing_conflict.check_and_update_conflict_status(current_date) # check ongoing conflicts
@@ -979,7 +1014,13 @@ for current_date in dates:
         else:
             ongoing_conflicts.remove(ongoing_conflict) # remove conflict from stored list
             G.nodes[ongoing_conflict.name]['has_conflict']=False # update graph node
+            if ongoing_conflict.name in camps:
+                for id in Agents:
+                    if ongoing_conflict.name in Agents[id].nogos:
+                        Agents[id].nogos.remove(ongoing_conflict.name)
 
+    
+    
     for idx, event in conflicts[conflicts['event_date'] == current_date].iterrows(): # consider all conflicts in given day
 
         location = loc_dic[event['location']]
@@ -994,9 +1035,6 @@ for current_date in dates:
         G.nodes[location.name]['fatalities']+= fat
         death_ids = deathmech(loc_dic[location.name].members,fat) 
         loc_dic[location.name].population -= fat
-
-        for id in location.members:
-            Agents[id].update_danger(fat)
             
         if death_ids:
             for id in death_ids:
@@ -1008,6 +1046,8 @@ for current_date in dates:
 
         if location not in ongoing_conflicts:
             ongoing_conflicts.append(location)
+    
+    
 
     # represent each epoch as a graph, commented out for now due to large number of unneccesary graphs.
     # draw_graph(G, current_date,ongoing_conflicts)
@@ -1028,97 +1068,79 @@ for current_date in dates:
     Senegals = 0
     Malis = 0
     Others = 0
-
+    
     for id in Agents:
-        
-        if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
-            print(Agents[id].location)
-            print(Agents[id].capitalbracket)
-            print(Agents[id].nogos)
-            print("Fassala shouldn\'t be a long term destination")
-            
 
+        location=Agents[id].location
+        loc_ag=loc_dic[location]
+        shortterm=Agents[id].shortterm
+        loc_short_ag=loc_dic[shortterm]
                 
-        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,camps)
-        
-        if Agents[id].longterm=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
-            print(Agents[id].capitalbracket)
-
-            # sys.exit(1)
+        Agents[id].assess_situation_and_move_if_needed(G,loc_ag,current_date)
                 
-
-        if Agents[id].status != 'Dead' and Agents[id].is_leader and Agents[id].location != 'Abroad':
-            Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
+        if Agents[id].status != 'Dead' and Agents[id].is_leader and location != 'Abroad':
+            Agents[id].indirect_check(G,loc_ag.name,current_date)
 
         if Agents[id].moved_today:
             
-            #print(str(id) + " moving from " + str(loc_dic[Agents[id].location].name) 
-            #     + " to " + str(loc_dic[Agents[id].shortterm].name) + "... status: " + str(Agents[id].status))
-            #print("I'm stuck: " + str(Agents[id].is_stuck))
-            #print("I'm leader: " + str(Agents[id].is_leader))
-            #print("Moving: " + str(Agents[id].moving))
-            #print("In group: " + str(Agents[id].ingroup))
-            #print("in fam: " + str(Agents[id].in_family))
-            #print("left fam: " + str(Agents[id].leftfam))
-            #if Agents[id].is_leader:
-            #    if Agents[id].leftfam or len(Agents[id].group)==1:
-            #        print(colors.YELLOW + "Solo" + str([x.id for x in Agents[id].group]) + colors.END)
-            #    else:
-            #        print(colors.RED + "Leads: " + str([x.id for x in Agents[id].group]) + colors.END)
-            #else:
-            #    print(colors.GREEN + "Follows: " + str([x.id for x in Agents[id].group]) + colors.END)
-            
-            #print(str(loc_dic[Agents[id].location].name) + " before : " +str(loc_dic[Agents[id].location].members))
-            #print(str(loc_dic[Agents[id].shortterm].name) + " before : " +str(loc_dic[Agents[id].shortterm].members))
+            loc_short_ag.addmember(id)
 
+            loc_ag.removemember(id,Agents)
             
+            if location!=shortterm:
+                G.nodes[location]['population'] -= 1 # update nodes
+                G.nodes[shortterm]['population'] += 1
+                G.edges[location, shortterm]['travelled']+=1
+            
+            if Agents[id].is_leader:
+                if not Agents[id].merged:
+                    Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
+            
+
+            if Agents[id].instratgroup:
+                if Agents[id].moving:
                 
-            
-            
-            loc_dic[Agents[id].shortterm].addmember(id)
+                    if location=='Fassala':
+                        if current_date<pd.Timestamp(datetime(2012, 3, 19).date()):
+                            Agents[id].check_kick_out(ags)
 
-            try:
-                loc_dic[Agents[id].location].removemember(id,Agents)
-                #print(str(loc_dic[Agents[id].location].name) + " after : " +str(loc_dic[Agents[id].location].members))
-                #print(str(loc_dic[Agents[id].shortterm].name) + " after : " +str(loc_dic[Agents[id].shortterm].members))
-                #print("\n")
-            except:
-                sys.exit(1)
+                            if Agents[id].is_stuck:
+                                Agents[id].speed_focus()
+                            
+                            if Agents[id].is_leader:
+                                for loc_id in loc_ag.members:
+                                    if loc_id!=id:
+                                        if Agents[loc_id].is_leader:
+                                            if Agents[loc_id].instratgroup:
+                                                if not Agents[loc_id].comb:
+                                                    if Agents[id].longterm==Agents[loc_id].longterm:
+                                                        if Agents[loc_id].moving:
+                                                            if Agents[loc_id].shortterm==shortterm:
+                                                                Agents[id].super_imp(Agents[loc_id])
+                                                                Agents[id].comb=True
+                                                                Agents[loc_id].comb=True
 
-            
-            if Agents[id].location!=Agents[id].shortterm:
+                    else:
+                        Agents[id].check_kick_out(ags)
 
-                G.nodes[Agents[id].location]['population'] -= 1 # update nodes
-                G.nodes[Agents[id].shortterm]['population'] += 1
-            
-            
-                G.edges[Agents[id].location, Agents[id].shortterm]['travelled']+=1
-            
-
-
-            
-
-            if not Agents[id].merged and Agents[id].is_leader:
-                Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
-            
-
-            if Agents[id].instratgroup and Agents[id].moving:
-                
-                if Agents[id].location=='Fassala' and current_date>pd.Timestamp(datetime(2012, 3, 19).date()):
-                    pass
-                else:
-                    Agents[id].check_kick_out(ags)
-
-                    if Agents[id].is_stuck:
-                        Agents[id].speed_focus()
-                    
-                    if Agents[id].is_leader:
-                        for loc_id in loc_dic[Agents[id].location].members:
-                            if loc_id!=id and Agents[loc_id].is_leader and Agents[loc_id].instratgroup and not Agents[loc_id].comb and Agents[id].longterm==Agents[loc_id].longterm and Agents[loc_id].moving and Agents[loc_id].shortterm==Agents[id].shortterm:
-                                Agents[id].super_imp(Agents[loc_id])
-                                Agents[id].comb=True
-                                Agents[loc_id].comb=True
-                    
+                        if Agents[id].is_stuck:
+                            Agents[id].speed_focus()
+                        
+                        if Agents[id].is_leader:
+                            for loc_id in loc_ag.members:
+                                if Agents[id].is_leader:
+                                    for loc_id in loc_ag.members:
+                                        if loc_id!=id:
+                                            if Agents[loc_id].is_leader:
+                                                if Agents[loc_id].instratgroup:
+                                                    if not Agents[loc_id].comb:
+                                                        if Agents[id].longterm==Agents[loc_id].longterm:
+                                                            if Agents[loc_id].moving:
+                                                                if Agents[loc_id].shortterm==shortterm:
+                                                                    Agents[id].super_imp(Agents[loc_id])
+                                                                    Agents[id].comb=True
+                                                                    Agents[loc_id].comb=True
+                        
 
             Agents[id].moved_today=False
 
@@ -1127,12 +1149,10 @@ for current_date in dates:
 
 
 
-        if Agents[id].status!='Dead' and Agents[id].location != 'Abroad':
-            try:
-                country = loc_dic[Agents[id].location].country
-            except:
-                print(Agents[id].location)
-                country = loc_dic[Agents[id].location].country
+        if Agents[id].status!='Dead' and location != 'Abroad':
+            
+            country = loc_ag.country
+
         else:
             country=None
 
@@ -1150,7 +1170,7 @@ for current_date in dates:
                 Nigers +=frac
             elif country == 'Senegal':
                 Senegals +=frac
-            elif Agents[id].location=='Abroad':
+            elif location=='Abroad':
                 Others += frac
 
     
@@ -1171,6 +1191,8 @@ for current_date in dates:
         
         processed_agents += 1  # Update the counter after processing each agent
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)
+
+    
 
     for camp in camps:
         pop=camp.population*frac
@@ -1194,86 +1216,17 @@ for current_date in dates:
     countries['Dead'].append(deaths)
     
     
-    
     if bpd:
-        for new_id in range(i,i+birth_rate+1):
-            tobeborn=True
-            x=0
-            while tobeborn and x<10000:
-                rand_loc = Agent.randomloc()
-                for id in loc_dic[rand_loc].members:
-                    member=Agents[id]
-                    if member.is_leader and 16<member.age<65 and member.gender=='F':
-                        Agents[i]=Agent(i,age=0, is_leader=False,location=rand_loc)
-                        member.fam.append(Agents[i])
-                        member.group.append(Agents[i])
-                        
-                        if member.in_family:
-                            
-                            for agent in member.fam:
-                                agent.fam=member.fam
-                        else:
-                            member.in_family=True
+        for new_id in range(i, i + birth_rate + 1):
+            if try_to_create_agent(new_id, birth_rate, loc_dic, Agents):
+                update_location_and_groups(new_id, loc_dic, Agents, total_agents, ags)
+        i += birth_rate
 
-                        if member.ingroup:
-                                for agent in member.group:
-                                    agent.group=member.group
-                
-                        else:
-                            
-                            member.in_group=True
-                            
-
-                        tobeborn=False
-                        break
-                x+=1
-            if i in Agents:
-                Agents[i].in_family=True
-                Agents[i].in_group=True
-                total_agents+=1
-                loc_dic[Agents[i].location].addmember(i)
-                ags.append(Agents[i])
-                
-        i+=birth_rate
     else:
-        if days%birth_rate==0:
-            tobeborn=True
-            x=0
-            while tobeborn and x<10000:
-                rand_loc = Agent.randomloc()
-                for id in loc_dic[rand_loc].members:
-                    member=Agents[id]
-                    if member.is_leader and 16<member.age<65 and member.gender=='Female':
-                        Agents[i]=Agent(i,age=0, is_leader=False,location=rand_loc)
-                        member.fam.append(Agents[i])
-                        member.group.append(Agents[i])
-                        
-                        if member.in_family:
-                            
-                            for agent in member.fam:
-                                agent.fam=member.fam
-                        else:
-                            member.in_family=True
-
-                        if member.ingroup:
-                                for agent in member.group:
-                                    agent.group=member.group
-                
-                        else:
-                            
-                            member.in_group=True
-                            
-
-                        tobeborn=False
-                        break
-                x+=1
-            if i in Agents:
-                Agents[i].in_family=True
-                Agents[i].in_group=True
-                total_agents+=1
-                loc_dic[Agents[i].location].addmember(i)
-                ags.append(Agents[i])
-                i+=1
+        if days % birth_rate == 0:
+            if try_to_create_agent(i, birth_rate, loc_dic, Agents):
+                update_location_and_groups(i, loc_dic, Agents, total_agents, ags)
+            i += 1
 
     days+=1
 
