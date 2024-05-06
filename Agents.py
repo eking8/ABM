@@ -24,8 +24,9 @@ class Agent:
 
 
 
-        cls.city_probabilities = {location.name: location.population / total_population for location in locations}
+        cls.city_probabilities = {location.name: location.population/ total_population for location in locations}
         prob_values = list(cls.city_probabilities.values())
+
 
         # Normalize the probabilities
         cls.normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
@@ -373,9 +374,10 @@ class Agent:
                 else:
                     # If no new leader, all members join other groups
                     for member in self.group:
+                        member.speed=member.origspeed
                         member.joingroup(all_agents)
 
-                # Apply the minimum speed to all group members
+                
                 for member in self.group:
                     member.speed = min_speed
 
@@ -700,16 +702,17 @@ class Agent:
             minspeed=min([x.speed for x in self.group if x != self])
             for agent in self.group:
                 if agent != self:
+                    print(agent.group)
                     agent.group.remove(self)
                     agent.speed=minspeed
-                else:
-                    self.is_leader=True
-                    self.ingroup=False
-                    self.instratgroup=False
-                    self.group=[self]
-                    self.speed=self.origspeed
-                    if 16<self.age<65:
-                        self.joingroup(ags)
+                
+            self.is_leader=True
+            self.ingroup=False
+            self.instratgroup=False
+            self.group=[self]
+            self.speed=self.origspeed
+            if 16<self.age<65:
+                    self.joingroup(ags)
                 
 
 

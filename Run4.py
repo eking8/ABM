@@ -848,6 +848,9 @@ Agent.initialise_populations(cities+camps,total_population)
 Agents = {}
 ags = []
 
+for loc in locations:
+    loc.population=0
+
 print("Creating Agents... \n")
 
 agent_t1=time.time()
@@ -986,6 +989,7 @@ for current_date in dates:
     if current_date==datetime(2012, 3, 19).date():
         for id in Agents:
             Agents[id].nogos.add('Fassala')
+            fassala.in_city_conflict(1000,datetime(2012, 3, 19).date())
         fassala.is_open=False
         fassala.iscamp=False
         nx.set_node_attributes(G, { 'Fassala': False }, 'is_open')
@@ -1008,7 +1012,10 @@ for current_date in dates:
     
 
     for ongoing_conflict in ongoing_conflicts:
-        ongoing_conflict.check_and_update_conflict_status(current_date) # check ongoing conflicts
+        if ongoing_conflict=='Fassala' and current_date>=datetime(2012, 3, 19).date():
+            pass
+        else:
+            ongoing_conflict.check_and_update_conflict_status(current_date) # check ongoing conflicts
         if ongoing_conflict.hasconflict:
             pass
         else:
@@ -1149,7 +1156,7 @@ for current_date in dates:
 
 
 
-        if Agents[id].status!='Dead' and location != 'Abroad':
+        if Agents[id].status!='Dead' and location != 'Abroad'and loc_ag:
             
             country = loc_ag.country
 
@@ -1221,12 +1228,14 @@ for current_date in dates:
             if try_to_create_agent(new_id, birth_rate, loc_dic, Agents):
                 update_location_and_groups(new_id, loc_dic, Agents, total_agents, ags)
         i += birth_rate
+        total_agents+=birth_rate
 
     else:
         if days % birth_rate == 0:
             if try_to_create_agent(i, birth_rate, loc_dic, Agents):
                 update_location_and_groups(i, loc_dic, Agents, total_agents, ags)
             i += 1
+            total_agents+=1
 
     days+=1
 
