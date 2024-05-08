@@ -100,9 +100,11 @@ class Agent:
         self.direction=None
         self.instratgroup=False
         self.comb=False
-        self.media= np.random.uniform(0,1)<=0.06
+        rand_n2=np.random.uniform(0,1)
+        self.media= rand_n2<=0.06
         self.contacts=[]
         self.contacts_in_camp={}
+        self.tellsfam=0.06<=rand_n2<=0.56 # 50% get info from fam
         
 
         if rand_n>0.9965: # capital 100000
@@ -209,9 +211,14 @@ class Agent:
                         self.checked=True
                         self.ingroup=False
                         self.leftfam=True
+                        if self.tellsfam:
+                            self.contacts+=[x for x in self.fam if x not in self.contacts]
+                        
                     
                 else:
                     self.leftfam=True
+                    if self.tellsfam:
+                        self.contacts+=[x for x in self.fam if x not in self.contacts]
                     max_member = max((x for x in self.fam if x.travelswithfam and 16<x.age < 65), 
                                      key=lambda x: x.age, default=None)
                     if max_member:
@@ -228,6 +235,9 @@ class Agent:
                                 max_member.checked=True
                                 max_member.ingroup=False
                                 max_member.leftfam=True
+                                if max_member.tellsfam:
+                                    max_member.contacts+=[x for x in max_member.fam if x not in max_member.contacts]
+                                
                     else:
                         for member in self.fam:
                             if not member.checked:
@@ -238,7 +248,9 @@ class Agent:
                 if not self.travelswithfam:
                     self.leftfam=True
                     self.is_leader=True
-                    self.checked=True                            
+                    self.checked=True   
+                    if self.tellsfam:
+                        self.contacts+=[x for x in self.fam if x not in self.contacts]                        
 
     def joingroup(self,all_agents,nolead=None):
 
@@ -260,6 +272,8 @@ class Agent:
                     agent.checked=True
                     if agent in self.fam and agent.leftfam:
                         agent.leftfam=False
+                        if agent.tellsfam:
+                            agent.contacts+=[x for x in agent.fam if x not in agent.contacts]
                         rejoin=True
                         
                 if rejoin:
@@ -276,7 +290,9 @@ class Agent:
         else:
             self.is_leader=True # Forced to travel alone
             if self.in_family:
-                self.leftfam=True             
+                self.leftfam=True     
+                if self.tellsfam:
+                        self.contacts+=[x for x in self.fam if x not in self.contacts]          
 
     def group_speeds_and_cap(self):
         
@@ -422,6 +438,8 @@ class Agent:
                                         agent2.contacts_in_camp[agent.location]+=1
                                     else:
                                         agent2.contacts_in_camp[agent.location]=1
+
+                                
 
                     destination_dict = None
 
