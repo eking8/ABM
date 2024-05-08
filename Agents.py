@@ -22,11 +22,8 @@ class Agent:
     @classmethod
     def initialise_populations(cls,locations,total_population):
 
-
-
         cls.city_probabilities = {location.name: location.population/ total_population for location in locations}
         prob_values = list(cls.city_probabilities.values())
-
 
         # Normalize the probabilities
         cls.normalized_prob_values = [float(i)/sum(prob_values) for i in prob_values]
@@ -69,7 +66,7 @@ class Agent:
         self.status = status
         self.longterm = None  # Intended destination
         self.moving = False  # Is the agent currently moving to a destination
-        self.threshold = np.random.uniform(0,20)  # InitiaClise the threshold here or in a separate method
+        self.threshold = np.random.uniform(0,20) 
         rand_n= np.random.uniform(0,1)
         self.startdate=None
         self.enddate=None
@@ -90,10 +87,10 @@ class Agent:
             )
         self.city_origin = self.location
         self.shortterm = self.location
-        self.fam=[self] # carried by all members of the family
+        self.fam=[self] 
         self.merged=False
         self.travelswithfam=False
-        self.group=[self] # carried by leader only
+        self.group=[self] 
         self.ingroup=False
         self.checked=False
         self.leftfam=False
@@ -116,10 +113,10 @@ class Agent:
             self.capitalbracket = 'Poor'
 
         if self.capitalbracket == 'Poor': # No access to car
-            self.speed = abs(np.random.normal(200,50))
+            self.speed = abs(np.random.normal(160,50))+44.2
             self.origspeed=self.speed
         else:
-            self.speed = abs(np.random.normal(400, 100))
+            self.speed = abs(np.random.normal(500, 100))
             self.origspeed=self.speed
 
     
@@ -176,16 +173,10 @@ class Agent:
                         leader.fam.append(self)
                         self.fam.append(leader)
                 else:
-                    self.is_leader # forced to travel alone without family
-                    
-
-                
-        
-
-            
+                    self.is_leader # forced to travel alone without family            
           
-    def form_fam_group(self): # needs to account for bayesian likelihood of travelling with your fam
-        # bayesian calculation on phone 
+    def form_fam_group(self): # Bayesian probability of travelling with fam given that they are an independent age and in a family
+       
         if 16<self.age<65:
             if self.in_family:
                 self.travelswithfam = random.random()<0.1761
@@ -199,18 +190,13 @@ class Agent:
         self.checked=False
 
 
-
-    
-
-
     def define_groups(self,all_agents):
         if self.in_family and not self.ingroup and not self.checked:
             
             if self.is_leader:
                 
                 if self.travelswithfam:
-                    
-                    
+                                        
                     self.group = [x for x in self.fam if x.travelswithfam]
                     self.group= sorted(self.group, key=lambda agent: agent.id)
                     
@@ -223,11 +209,11 @@ class Agent:
                         self.checked=True
                         self.ingroup=False
                         self.leftfam=True
-
                     
                 else:
                     self.leftfam=True
-                    max_member = max((x for x in self.fam if x.travelswithfam and 16<x.age < 65), key=lambda x: x.age, default=None)
+                    max_member = max((x for x in self.fam if x.travelswithfam and 16<x.age < 65), 
+                                     key=lambda x: x.age, default=None)
                     if max_member:
                         max_member.is_leader=True
                         max_member.group=[x for x in max_member.fam if x.travelswithfam]
@@ -247,21 +233,19 @@ class Agent:
                             if not member.checked:
                                 member.joingroup(all_agents)
                                 
-
             
             else:
                 if not self.travelswithfam:
                     self.leftfam=True
                     self.is_leader=True
-                    self.checked=True
-        
-        
-                    
+                    self.checked=True                            
 
+    def joingroup(self,all_agents,nolead=None):
 
-    def joingroup(self,all_agents):
         available_leaders = [agent for agent in all_agents if agent.location == self.location 
-                             and agent.id != self.id and agent.is_leader and 16 <= agent.age <= 65]
+                             and agent.id != self.id and agent.is_leader and 16 <= agent.age <= 65 
+                             and agent != nolead]
+        
         if len(available_leaders)>0:
             leader = random.choice(available_leaders)
             self.ingroup=True
@@ -292,15 +276,7 @@ class Agent:
         else:
             self.is_leader=True # Forced to travel alone
             if self.in_family:
-                self.leftfam=True
-                    
-
-
-        
-            
-
-
-            
+                self.leftfam=True             
 
     def group_speeds_and_cap(self):
         
@@ -312,7 +288,6 @@ class Agent:
 
     # Calculate the cumulative distribution
     cumulative_distribution = np.cumsum(probabilities)
-
 
     def generate_random_age(self):
         # Generate a random float in the range [0, 1)
@@ -327,15 +302,6 @@ class Agent:
         # Return a random age within the selected age group
         return np.random.randint(age_min, age_max + 1)
     
-    """
-    # @profile
-    def group_utility(self,available_agents):
-            Agent.lam
-    """
-
-
-
-
     @staticmethod
     def generate_gender():
         probabilities = [0.503, 0.497]
@@ -380,21 +346,15 @@ class Agent:
                 
                 for member in self.group:
                     member.speed = min_speed
-
-        
-
-    def assess_situation_and_move_if_needed(self,G,city,current_date):
-
-        
-
+    
+    def assess_situation_and_move_if_needed(self,G,city,current_date,roulette=True):
+    
         if self.ingroup and len(self.group)==1:
             self.ingroup=False
                      
         if self.is_leader and not self.is_stuck and self.location!='Abroad' and self.status != 'Dead':
             
-            
             self.merged = False
-
                 
             if city.hasconflict and city.fatalities > self.threshold:
                 for agent in self.group:
@@ -403,23 +363,28 @@ class Agent:
                             
                             agent.moving = True
                             agent.status = 'Fleeing from conflict'
-                            # print(colors.RED + "Agent " + str(self.id) + " is now fleeing from " + str(self.location) + colors.END)
                             agent.startdate=current_date
-                            agent.distance_traveled_since_rest=0
-                                
-                                    
+                            agent.distance_traveled_since_rest=0                                    
 
-
-            if self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']:
+            if (self.moving and self.status in ['Refugee','Returnee','IDP','Fleeing from conflict']) or (city.name=='Fassala' and current_date >= pd.Timestamp(datetime(2012, 3, 19).date())):
                 
+                if self.location in self.__class__.foreign_cities:
+                    new_status = 'Refugee'
+                    self.been_abroad = True
+                elif self.been_abroad:
+                    new_status = 'Returnee'
+                else:
+                    new_status = 'IDP'
+
                 if city.last_conflict_date:
                     cooldown=(current_date-city.last_conflict_date).days
                     add = city.waited_days/1000
                     cooldown*=(1+add)
                 else:
-                    cooldown=22 # 1/3 chance of moving on 100km walked
+                    cooldown=22 # this cool down ensures 1/3 chance of moving on 100km walked
 
-                rest_prob = 1-math.exp(-(self.distance_traveled_since_rest+100)*cooldown/3300) # at 14 days after conflict, 200km walked, and 10 people stopping should be 1/3 chance of moving
+                rest_prob = 1-math.exp(-(self.distance_traveled_since_rest+100)*cooldown/3300) 
+                # at 14 days after conflict, 200km walked, and 10 people stopping should be 1/3 chance of moving
 
                 if random.random()>rest_prob or (city.name=='Fassala' and current_date >= pd.Timestamp(datetime(2012, 3, 19).date())):
 
@@ -433,13 +398,7 @@ class Agent:
                             agent.moving=True
                             agent.startdate=current_date
 
-                    if self.location in self.__class__.foreign_cities:
-                        new_status = 'Refugee'
-                        self.been_abroad = True
-                    elif self.been_abroad:
-                        new_status = 'Returnee'
-                    else:
-                        new_status = 'IDP'
+                    
 
                     for agent in self.group:
                         agent.status = new_status
@@ -447,26 +406,23 @@ class Agent:
                         agent.traveltime = current_date - agent.startdate
 
                         if self.location == self.longterm:
-                            agent.moving = False
-                            agent.enddate = current_date
+                            if current_date >= pd.Timestamp(datetime(2012, 3, 19).date()) and self.location=='Fassala':
+                                pass
+                            else:
+                                agent.moving = False
+                                agent.enddate = current_date
+                                
+                                if self.capitalbracket == 'Rich':
+                                    agent.location = 'Abroad'
+                                    agent.been_abroad = True
+                                    self.status='International Refugee'
                             
-                            if self.capitalbracket == 'Rich':
-                                agent.location = 'Abroad'
-                                agent.been_abroad = True
-                                self.status='International Refugee'
-                        
-                            for agent2 in self.contacts:
-                                if agent.location in agent2.contacts_in_camp:
-                                    agent2.contacts_in_camp[agent.location]+=1
-                                else:
-                                    agent2.contacts_in_camp[agent.location]=1
+                                for agent2 in self.contacts:
+                                    if agent.location in agent2.contacts_in_camp:
+                                        agent2.contacts_in_camp[agent.location]+=1
+                                    else:
+                                        agent2.contacts_in_camp[agent.location]=1
 
-                            # print(colors.GREEN + "Agent " + str(self.id) + " has reached " + str(self.longterm) + colors.END)
-                            
-                            # LOGIC THAT ASSIGNS STATUS AND MOVING CHANGE FOR FAMILY (FOLLOWERS)
-                        
-                    
-                    
                     destination_dict = None
 
                     if self.capitalbracket == 'Rich':
@@ -480,33 +436,32 @@ class Agent:
                         iscamp=True
 
                     if destination_dict:
-                        key = self.roulette_select(G,city.name,destination_dict,iscamp)
-                        
+                        if roulette:
+                            key = self.roulette_select(G,city.name,destination_dict,iscamp)
+                        else:
+                            key = min(destination_dict, key=lambda k: destination_dict[k]['distance'])
+
                         if key:
                             for agent in self.group:
                                 agent.distanceleft = destination_dict[key]['distance']
                                 agent.longterm = key
                                 agent.shortterm = destination_dict[key]['path'][0]
                     
-                                # Debugging print statements can be uncommented for additional logs
-                                #print("location = " + self.location + ", and short term = " + str(self.shortterm))
-                                #print(colors.YELLOW + "Agent " + str(self.id) + " is going to the camp in " + str(self.longterm) + " from "+ str(self.location) + colors.END)
                     else:
                         for agent in self.group:
                             agent.is_stuck = True
                             agent.moving = False
                             agent.moved_today= False
                             
-
-
                 else:
                     self.distance_traveled_since_rest=0 # reset after rest
                     city.waited_days+=len(self.group)
 
-        elif self.is_stuck:
+        elif self.is_stuck or (self.location=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19))):
             if city:
-                if set(G.neighbors(city.name)).issubset(self.nogos):
-                    for neighbor in G.neighbors(city.name):
+                G_filtered = filter_graph_by_max_link_length(G, self.speed,city,nogo=self.nogos)
+                if set(G_filtered.neighbors(city.name)).issubset(self.nogos):
+                    for neighbor in G_filtered.neighbors(city.name):
                         self.nogos.remove(neighbor)
 
     def merge_nogo_lists(self, all_agents):
@@ -523,9 +478,6 @@ class Agent:
 
         if number_of_agents>0:
             self.merged=True
-
-
-            
 
         # Merge the nogo lists
         for agent in selected_agents:
@@ -552,11 +504,6 @@ class Agent:
             agent.familiar=self.familiar
                 
 
-                
-        
-        
-
- 
     def roulette_select(self, G, startnode, distances, iscamp):
         """
         Select a key from the distances dictionary using roulette method,
@@ -566,11 +513,14 @@ class Agent:
         The agents have a utility to:
         - Familiarity
         - Directions similar to the current one (more likely to stick out for the long term)
+        - Number travelled on first link (SOCIAL NETWORK THEORY)
+        - Number of contacts made to camp
         
         The agents have a disutility to:
         - Large distances
         - Overpopulated camps
         - Directions opposite to current one (less likely to circle around)
+        - Fatalities on nodes
 
         :param distances: Dictionary of {key: {'distance': value, 'population': value, 'path': [path]}}
         :return: Selected key based on roulette selection
@@ -635,19 +585,21 @@ class Agent:
     
     def indirect_check(self, G, start_node,current_date):
 
-        G_filtered = filter_graph_by_max_link_length(G, self.speed,start_node,self.nogos)
+        G_filtered = filter_graph_by_max_link_length(G, 100,start_node,self.nogos)
         
-        if G_filtered.nodes[start_node].get('is_camp',False):
+        if G_filtered.nodes[start_node].get('is_camp',False) and (current_date<pd.Timestamp(datetime(2012, 3, 19)) or start_node!='Mbera'):
+
 
             for neighbor in G_filtered.neighbors(start_node):
                 
                 if G_filtered.nodes[neighbor].get('has_conflict', False):
-                    for agent in self.group:
-                        agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
-                        agent.nogos.add(G_filtered.nodes[start_node].get('name', start_node))
-                        agent.moving=True
-                        agent.startdate=current_date
-                    break
+                    if neighbor=='Fassala' and current_date>pd.Timestamp(datetime(2012, 3, 19)):
+                        for agent in self.group:
+                            agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
+                            agent.nogos.add(G_filtered.nodes[start_node].get('name', start_node))
+                            agent.moving=True
+                            agent.startdate=current_date
+                        break
 
         else:
 
@@ -680,8 +632,7 @@ class Agent:
         if self.is_leader:
             max_member = max((x for x in self.group if x.status!='Dead' and x.age < 65), key=lambda x: x.age, default=None)
             if max_member:
-                self.ingroup=False
-                self.instratgroup=False
+                
                 max_member.is_leader=True   
                 minspeed=min([x.origspeed for x in self.group])
                 for agent in self.group:
@@ -690,29 +641,36 @@ class Agent:
                         agent.speed=minspeed
 
                 self.group=[self]
+                lead=max_member
 
             else:
                 for member in self.group:
                     member.ingroup=False
                     member.instratgroup=False
                     member.group=[member]
-                    member.joingroup(ags) 
                     member.speed=member.origspeed
+                    member.joingroup(ags) 
+                lead=None
+                    
         else:
+            
             minspeed=min([x.speed for x in self.group if x != self])
             for agent in self.group:
                 if agent != self:
                     print(agent.group)
                     agent.group.remove(self)
                     agent.speed=minspeed
+                    if agent.is_leader:
+                        lead=agent
                 
-            self.is_leader=True
-            self.ingroup=False
-            self.instratgroup=False
-            self.group=[self]
-            self.speed=self.origspeed
-            if 16<self.age<65:
-                    self.joingroup(ags)
+        self.is_leader=True
+        self.ingroup=False
+        self.instratgroup=False
+        self.group=[self]
+        self.speed=self.origspeed
+        
+        if not 16<self.age<65:
+                self.joingroup(ags,nolead=lead)
                 
 
 
@@ -737,7 +695,7 @@ class Agent:
 
         U12 = self.lam*speed_norm_12+(1-self.lam)*(N1+N2-0.5)/(N1+N2)
 
-        if U12>U1 and U12>U2:
+        if U12>U1 and U12>U2 and N1+N2<50:
             # Merge groups
 
         
@@ -759,6 +717,7 @@ class Agent:
             pass
         else:
             self.lam=1
+        self.is_stuck=False
 
             
 def camp_paths(G, start_node,max_link_length,current_date,nogo):

@@ -12,14 +12,13 @@ import random
 geocode_cache = {}
 
 class Location: 
-    # @profile
     def __init__(self, name, country="Mali"):
         self.name = name
         self.country = country
         self.latitude, self.longitude = self.geocode_location(name, country)
         self.connections = []
         self.hasconflict = False
-        self.fatalities=0 # initially
+        self.fatalities=0 
         self.members=[]
         self.last_conflict_date = None  # Track the date of the last conflict, must be none at start of simulation
         self.waited_days=0
@@ -27,12 +26,10 @@ class Location:
         self.perc=0
 
     # find lat and long of location
-    
-
     @staticmethod
     def geocode_location(name, country):
         query = f"{name}, {country}"
-        # print(f"Geocoding {query}...")
+        print(f"Geocoding {query}...")
         if query in geocode_cache:
             return geocode_cache[query]
         else:
@@ -45,8 +42,6 @@ class Location:
                 return None, None
     
     # find distance between two points on a sphere
-
-   
     @staticmethod
     @lru_cache(maxsize=None)
     def haversine_distance(lat1, lon1, lat2, lon2):
@@ -61,23 +56,20 @@ class Location:
 
 
     # method to add connections
-    #@profile
     def add_connection(self, other_location):
         if not all([self.latitude, self.longitude, other_location.latitude, other_location.longitude]):
             print(f"Missing coordinates for connection between {self.name} and {other_location.name}")
             return
-        # print(f"Calculating distance between {self.name} and {other_location.name}...")
+        print(f"Calculating distance between {self.name} and {other_location.name}...")
         distance = self.haversine_distance(self.latitude, self.longitude, other_location.latitude, other_location.longitude)
         # check for border crossings
         crosses_border = self.country != other_location.country
         self.connections.append({'location': other_location, 'distance': distance, 'crosses_border': crosses_border})
     
-    #@profile
     def addmember(self,id):
         self.members.append(id)
         self.population += 1
 
-    #@profile
     def removemember(self,id,Agents):
         if id in self.members:
             self.members.remove(id)
@@ -85,12 +77,12 @@ class Location:
         else:
             print(str(id) + " not in " + str(self.name))
             print(self.members)
-            print(Agents[id].location)
+            print([x.location for x in Agents[id].group])
+            print([x.id for x in Agents[id].group if x.is_leader])
             print(Agents[id].instratgroup)
             print([x.id for x in Agents[id].group])
             sys.exit(1)
 
-    #@profile
     def in_city_conflict(self, fatalities, current_date):
         """
         Update the conflict status of the city and track the date of the last conflict.
@@ -104,10 +96,7 @@ class Location:
         self.hasconflict = True # by definition
         self.last_conflict_date = current_date 
         self.fatalities += fatalities # cum fatalitlies
-
-        # print("Conflict updated in " + self.name)
     
-    #@profile   
     def check_and_update_conflict_status(self, current_date):
         """
         Check and update the city's conflict status based on the last conflict date and the current date.
@@ -118,11 +107,8 @@ class Location:
         if self.hasconflict and self.last_conflict_date:
             if current_date - self.last_conflict_date > timedelta(days=10): #10 day cool down period after event, can be adjusted in SA
                 self.hasconflict = False 
-                # print("Conflict removed in " + self.name)
-            # else:
-                # print("Conflict checked in " + self.name)
+
     
-    #@profile
     def form_strat_group(self,Agents):
 
         group_size=0
@@ -139,7 +125,6 @@ class Location:
                         for agent in group:
                             if agent!=1:
                                 agent.group=group
-                                #print([x.id for x in group])
                         Agents[id].is_leader=True
                         group_size=abs(random.normalvariate(10,4))
                         Agents[id].ingroup=True
@@ -167,7 +152,6 @@ class Location:
 
 
 class City(Location):
-    #@profile
     def __init__(self, name, country="Mali", population=None, hasairport=False, top20 = True):
         super().__init__(name, country)
         self.population = population
@@ -177,12 +161,7 @@ class City(Location):
         self.top20 = top20 # if has top 20 population
 
 
-    
-
-
-
 class Camp(Location):
-    #@profile
     def __init__(self, name, country, population=None): # Need to change capacity to empirically derived
         super().__init__(name, country)
         self.population = population
@@ -191,10 +170,7 @@ class Camp(Location):
         self.iscamp = True # by definition
         
 
-        
-
     
-#@profile
 def total_pop(cities):
     return sum(city.population for city in cities)
 

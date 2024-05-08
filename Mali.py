@@ -659,6 +659,7 @@ def try_to_create_agent(i, birth_rate, loc_dic, Agents):
                 Agents[i] = new_agent
                 member.fam.append(new_agent)
                 member.group.append(new_agent)
+                new_agent.status=member.status
 
                 if not member.in_family:
                     member.in_family = True
@@ -808,14 +809,9 @@ loc_dic = {'Bamako':bamako,
            "Tengandogo":goudoubo,
            "Passakongo":dedougou}
 
-# Locations without an OSMNX are assumed to be within the closest city
-
 print("Initilising graph... \n")
 
 start_time = time.time()
-
-
-
 
 total_population = total_pop(cities)+28079
 
@@ -848,7 +844,7 @@ Agent.initialise_populations(cities+camps,total_population)
 Agents = {}
 ags = []
 
-for loc in locations:
+for loc in cities+camps:
     loc.population=0
 
 print("Creating Agents... \n")
@@ -915,20 +911,16 @@ print("Finish defining groups... \n")
 
 
 def_groups_t1=time.time()
+
 for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
     agent.define_groups(ags)
-    #print([x.id for x in agent.fam])
-    #print([x.id for x in agent.group])
-    #print(agent.age)
-    #print(agent.is_leader)
-    #print(agent.checked)
-    #print(agent.travelswithfam)
-    #print("\n\n\n")
+
 def_groups_t2=time.time()
 
 print("...finished in: "+ str(def_groups_t2-def_groups_t1) + "\n")
 
 print("Speed and captial normalisation... \n")
+
 speeds_t1=time.time()
 for agent in ags: # must initialise new group to ensure all family travelling groups initialised
     agent.group_speeds_and_cap()
@@ -936,29 +928,12 @@ speeds_t2=time.time()
 
 print("...finished in: "+ str(speeds_t2-speeds_t1) + "\n")
 
-"""
-# FAM GROUP B.U.G FIX
-for agent in ags:
-    print([x.id for x in agent.fam])
-    print([x.id for x in agent.group])
-    for af in agent.group:
-        if af.leftfam:
-            print(colors.PURPLE + str(af.id) + colors.END)
-        elif af.is_leader:
-            print(colors.RED + str(af.id) + colors.END)
-        else:
-            print(colors.GREEN + str(af.id) + colors.END)
-    print("\n")
-
-
-sys.exit(1)"""
 if (45.92*n_agents)>(365*1000):
     birth_rate = round((45.92*n_agents)/(365*1000))
     bpd = True
 else:
     birth_rate = round(1/((45.92*n_agents)/(365*1000))) # derived from https://www.statista.com/statistics/977023/crude-birth-rate-in-mali/
     bpd = False
-
 
 populations = {camp.name: [] for camp in camps}
 countries = {x:[] for x in ['Burkina Faso','Côte D\'Ivoire','Guinea','Mauritania','Niger','Senegal','Mali','Other','Dead']}
@@ -988,7 +963,6 @@ for current_date in dates:
     
     if current_date==datetime(2012, 3, 19).date():
         for id in Agents:
-            Agents[id].nogos.add('Fassala')
             fassala.in_city_conflict(1000,datetime(2012, 3, 19).date())
         fassala.is_open=False
         fassala.iscamp=False
@@ -996,20 +970,11 @@ for current_date in dates:
         nx.set_node_attributes(G, { 'Fassala': 'Closed camp' }, 'type')
         for id in fassala.members:
             Agents[id].moving = True
-            Agents[id].status = 'Fleeing from conflict'
+            Agents[id].status = 'Refugee'
             Agents[id].startdate=current_date
-            Agents[id].longterm=None
+            Agents[id].longterm='Mbera'
             Agents[id].distance_traveled_since_rest=0
-    elif current_date>pd.Timestamp(datetime(2012, 3, 19)):
-        for id in fassala.members:
-            Agents[id].moving = True
-            Agents[id].status = 'Fleeing from conflict'
-            Agents[id].startdate=current_date
-            Agents[id].longterm=None
-            Agents[id].distance_traveled_since_rest=0
-
         
-    
 
     for ongoing_conflict in ongoing_conflicts:
         if ongoing_conflict=='Fassala' and current_date>=datetime(2012, 3, 19).date():
@@ -1032,8 +997,6 @@ for current_date in dates:
 
         location = loc_dic[event['location']]
 
-        # print("Conflict in " + event['location'])
-
         fat = event['fatalities']
         
         G.nodes[location.name]['has_conflict']=True
@@ -1047,19 +1010,11 @@ for current_date in dates:
             for id in death_ids:
                 Agents[id].kill(frac,ags)
         
-            
-
         location.in_city_conflict(event['fatalities'], current_date)
 
         if location not in ongoing_conflicts:
             ongoing_conflicts.append(location)
     
-    
-
-    # represent each epoch as a graph, commented out for now due to large number of unneccesary graphs.
-    # draw_graph(G, current_date,ongoing_conflicts)
-
-    # print(colors.PURPLE, "current conflicts",[con.name for con in ongoing_conflicts], colors.END)
     refugees=0
     returnees=0
     idps=0
@@ -1075,29 +1030,78 @@ for current_date in dates:
     Senegals = 0
     Malis = 0
     Others = 0
-    
+
     for id in Agents:
-
-        location=Agents[id].location
-        loc_ag=loc_dic[location]
-        shortterm=Agents[id].shortterm
-        loc_short_ag=loc_dic[shortterm]
+                   
+        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
                 
-        Agents[id].assess_situation_and_move_if_needed(G,loc_ag,current_date)
-                
-        if Agents[id].status != 'Dead' and Agents[id].is_leader and location != 'Abroad':
-            Agents[id].indirect_check(G,loc_ag.name,current_date)
+        if Agents[id].status != 'Dead' and Agents[id].is_leader and Agents[id].location != 'Abroad':
+            Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
 
+        if loc_dic[Agents[id].location]:
+            
+            country = loc_dic[Agents[id].location].country
+
+        else:
+            country=None
+
+        if Agents[id].status == 'Refugee':
+
+            refugees+=frac
+            if country == 'Burkina Faso':
+                Burkinas+=frac
+            elif country == "Côte D\'Ivoire":
+                Cotes +=frac
+            elif country == 'Guinea':
+                Guineas +=frac
+            elif country == 'Mauritania':
+                Maus +=frac
+            elif country == 'Niger':
+                Nigers +=frac
+            elif country == 'Senegal':
+                Senegals +=frac
+            elif Agents[id].location=='Abroad':
+                Others += frac
+
+    
+        elif Agents[id].status == 'Returnee':
+            returnees+=frac
+            Malis+=frac
+            
+        elif Agents[id].status == 'Resident':
+            residents+=frac
+            Malis+=frac
+            
+        elif Agents[id].status == 'Dead':
+            deaths+=frac
+
+            
+        elif Agents[id].status == 'IDP':
+            idps+=frac
+            Malis+=frac
+        else:
+            fleeing+=1
+            Malis+=1
+        
         if Agents[id].moved_today:
             
-            loc_short_ag.addmember(id)
-
-            loc_ag.removemember(id,Agents)
             
-            if location!=shortterm:
-                G.nodes[location]['population'] -= 1 # update nodes
-                G.nodes[shortterm]['population'] += 1
-                G.edges[location, shortterm]['travelled']+=1
+            
+            if Agents[id].location!=Agents[id].shortterm and Agents[id].is_leader:
+                
+                for agent in Agents[id].group:
+                    
+
+                    if agent.location!=agent.shortterm:
+                        try:
+                            loc_dic[agent.shortterm].addmember(agent.id)
+                            loc_dic[agent.location].removemember(agent.id,Agents)
+                            G.nodes[agent.location]['population'] -= 1 # update nodes
+                            G.nodes[agent.shortterm]['population'] += 1
+                            G.edges[agent.location, agent.shortterm]['travelled']+=1
+                        except:
+                            print(agent.location)
+                            pass
             
             if Agents[id].is_leader:
                 if not Agents[id].merged:
@@ -1115,14 +1119,14 @@ for current_date in dates:
                                 Agents[id].speed_focus()
                             
                             if Agents[id].is_leader:
-                                for loc_id in loc_ag.members:
+                                for loc_id in loc_dic[Agents[id].location].members:
                                     if loc_id!=id:
                                         if Agents[loc_id].is_leader:
                                             if Agents[loc_id].instratgroup:
                                                 if not Agents[loc_id].comb:
                                                     if Agents[id].longterm==Agents[loc_id].longterm:
                                                         if Agents[loc_id].moving:
-                                                            if Agents[loc_id].shortterm==shortterm:
+                                                            if Agents[loc_id].shortterm==Agents[id].shortterm:
                                                                 Agents[id].super_imp(Agents[loc_id])
                                                                 Agents[id].comb=True
                                                                 Agents[loc_id].comb=True
@@ -1134,16 +1138,16 @@ for current_date in dates:
                             Agents[id].speed_focus()
                         
                         if Agents[id].is_leader:
-                            for loc_id in loc_ag.members:
+                            for loc_id in loc_dic[Agents[id].location].members:
                                 if Agents[id].is_leader:
-                                    for loc_id in loc_ag.members:
+                                    for loc_id in loc_dic[Agents[id].location].members:
                                         if loc_id!=id:
                                             if Agents[loc_id].is_leader:
                                                 if Agents[loc_id].instratgroup:
                                                     if not Agents[loc_id].comb:
                                                         if Agents[id].longterm==Agents[loc_id].longterm:
                                                             if Agents[loc_id].moving:
-                                                                if Agents[loc_id].shortterm==shortterm:
+                                                                if Agents[loc_id].shortterm==Agents[id].shortterm:
                                                                     Agents[id].super_imp(Agents[loc_id])
                                                                     Agents[id].comb=True
                                                                     Agents[loc_id].comb=True
@@ -1153,53 +1157,16 @@ for current_date in dates:
 
         for id in Agents:
             Agents[id].comb=False
-
-
-
-        if Agents[id].status!='Dead' and location != 'Abroad'and loc_ag:
-            
-            country = loc_ag.country
-
-        else:
-            country=None
-
-        if Agents[id].status == 'Refugee':
-            refugees+=frac
-            if country == 'Burkina Faso':
-                Burkinas+=frac
-            elif country == 'Coete D\'Ivoire':
-                Cotes +=frac
-            elif country == 'Guinea':
-                Guineas +=frac
-            elif country == 'Mauritania':
-                Maus +=frac
-            elif country == 'Niger':
-                Nigers +=frac
-            elif country == 'Senegal':
-                Senegals +=frac
-            elif location=='Abroad':
-                Others += frac
-
-    
-        elif Agents[id].status == 'Returnee':
-            returnees+=frac
-            Malis+=frac
-        elif Agents[id].status == 'Resident':
-            residents+=frac
-            Malis+=frac
-        elif Agents[id].status == 'Dead':
-            deaths+=frac
-        elif Agents[id].status == 'IDP':
-            idps+=frac
-            Malis+=frac
-        else:
-            fleeing+=1
-            Malis+=1
+        
         
         processed_agents += 1  # Update the counter after processing each agent
         print_progress_bar(processed_agents, total_agents, prefix='Progress:', suffix='Complete', length=50)
 
-    
+    if current_date > pd.Timestamp(datetime(2012, 3, 19).date()):
+        for agent in fassala.members:
+            fassala.removemember(agent,Agents)
+            mbera.addmember(agent)
+            Agents[agent].location='Mbera'
 
     for camp in camps:
         pop=camp.population*frac
@@ -1239,7 +1206,13 @@ for current_date in dates:
 
     days+=1
 
-    
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+
+print('\n')
+print(f"Simulation completed in {elapsed_time:.2f} seconds.")
+
 camp_names = list(populations.keys())
 n_camps = len(camp_names)
 camps_per_figure = 3
@@ -1282,62 +1255,13 @@ with open(csv_file, 'w', newline='') as file:
         row = {key: populations[key][i] for key in populations.keys()}
         writer.writerow(row)
 
-end_time = time.time()
-
-
-elapsed_time = end_time - start_time
-
-print('\n')
-print(f"Simulation completed in {elapsed_time:.2f} seconds.")
-
-"""
-# e.g. where can an agent access within a day, starting at Bamako and travelling at 200km/d
-accessible = find_accessible_nodes_within_distance(G, 'Bamako', 200)
-
-print('Walking from Bamako:',accessible)
-
-# e.g. how do I get to all camps from Bamako (shortest distance) (max move speed of 200)
-
-camp_paths_from_bamako=camp_paths(G, 'Bamako',200)
-
-
-if camp_paths_from_bamako is not None:
-    for key in camp_paths_from_bamako:
-        print('To get to %s from Bamako it takes %.1fkm and you travel through: %s' % (key, camp_paths_from_bamako[key]['distance'], camp_paths_from_bamako[key]['path']))
-
-
-# e.g. how do I get to the nearest airport from Zegoua (max move speed of 200)
-    
-air_path = find_nearest_city_with_airport_directly(G, 'Bamako',200) 
-
-print(air_path)
-
-# How do I get to a bordering country e.g. Senegal (max move speed of 200)
-
-count_path = find_shortest_paths_to_neighboring_countries(G, 'Bamako',200)
-
-if count_path is not None:
-    print(count_path)
-"""
 
 for camp in camps:
     print("Camp in " + str(camp.name) + " is " + str(camp.population*frac))
 
-
-
-"""
-for id in Agents:
-    if Agents[id].capitalbracket == 'Rich':
-        print(colors.GREEN + Agents[id].location + colors.END)
-    elif Agents[id].capitalbracket == 'Mid':
-        print(colors.YELLOW + Agents[id].location + colors.END)
-    else:
-        print(colors.RED + Agents[id].location + colors.END)
-"""
 draw_graph(G, current_date, distances_on=False)
 
 csv_file2= 'Status_splits.csv'
-
 
 with open(csv_file2, 'w', newline='') as file:
     writer = csv.DictWriter(file, fieldnames=statuses.keys())
@@ -1362,7 +1286,3 @@ with open(csv_file3, 'w', newline='') as file:
     for i in range(len(countries['Date'])):
         row = {key: countries[key][i] for key in countries.keys()}
         writer.writerow(row)
-
-
-print("nodes: " + str(len(G.nodes)))
-print("edges: " + str(len(G.edges)))
