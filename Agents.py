@@ -109,13 +109,16 @@ class Agent:
 
         if rand_n>0.9965: # capital 100000
             self.capitalbracket = 'Rich'
+            self.origcapitalbracket=self.capitalbracket
         elif rand_n>0.6094: # capital > 10000
             self.capitalbracket = 'Mid'
+            self.origcapitalbracket=self.capitalbracket
         else:
             self.capitalbracket = 'Poor'
+            self.origcapitalbracket=self.capitalbracket
 
         if self.capitalbracket == 'Poor': # No access to car
-            self.speed = abs(np.random.normal(160,50))+44.2
+            self.speed = abs(np.random.normal(200,50))
             self.origspeed=self.speed
         else:
             self.speed = abs(np.random.normal(500, 100))
@@ -456,14 +459,22 @@ class Agent:
                     if destination_dict:
                         if roulette:
                             key = self.roulette_select(G,city.name,destination_dict,iscamp)
+                            if key:
+                                for agent in self.group:
+                                    agent.distanceleft = destination_dict[key]['distance']
+                                    agent.longterm = key
+                                    agent.shortterm = destination_dict[key]['path'][0]
                         else:
                             key = min(destination_dict, key=lambda k: destination_dict[k]['distance'])
+                            if key:
+                                for agent in self.group:
+                                    if key!=self.location:
+                                        agent.distanceleft = destination_dict[key]['distance']
+                                        agent.longterm = key
+                                        agent.shortterm = destination_dict[key]['path'][0]
 
-                        if key:
-                            for agent in self.group:
-                                agent.distanceleft = destination_dict[key]['distance']
-                                agent.longterm = key
-                                agent.shortterm = destination_dict[key]['path'][0]
+
+                        
                     
                     else:
                         for agent in self.group:
@@ -549,13 +560,14 @@ class Agent:
             return None
 
         # Define constants and parameters
-        a = self.age / 1000
-        b = 50  # Constant bias
-        c = 1/200 if iscamp else 0
-        d = 50  # Cosine multiplication factor
-        e = 10
-        f = 1
+        a = self.age / 30000
+        b = 100  # Constant bias
+        c = 1/5000 if iscamp else 0
+        d = 10  # Cosine multiplication factor
+        e = 0.01
+        f = 0.01
         g = 1
+        h=0.5
 
         scores = {}
         total_score_sum = 0
@@ -573,7 +585,7 @@ class Agent:
             cosine_of_bearing = math.cos(bearing_difference / 2)
 
             # Calculate the score using the given formula
-            score = (self.familiar.get(key, 0)
+            score = (h*self.familiar.get(key, 0)
                     - a * value['distance']
                     + b
                     - c * value.get('population', 0)
@@ -603,15 +615,18 @@ class Agent:
     
     def indirect_check(self, G, start_node,current_date):
 
-        G_filtered = filter_graph_by_max_link_length(G, 100,start_node,self.nogos)
         
-        if G_filtered.nodes[start_node].get('is_camp',False) and (current_date<pd.Timestamp(datetime(2012, 3, 19)) or start_node!='Mbera'):
-
+        
+        if G[start_node].get('is_camp',False) and (current_date<pd.Timestamp(datetime(2012, 3, 19)) or start_node!='Mbera'):
+            
+            G_filtered = filter_graph_by_max_link_length(G, 10,start_node,self.nogos)
 
             for neighbor in G_filtered.neighbors(start_node):
                 
                 if G_filtered.nodes[neighbor].get('has_conflict', False):
                     if neighbor=='Fassala' and current_date>pd.Timestamp(datetime(2012, 3, 19)):
+                        pass
+                    else:
                         for agent in self.group:
                             agent.nogos.add(G_filtered.nodes[neighbor].get('name', neighbor))
                             agent.nogos.add(G_filtered.nodes[start_node].get('name', start_node))
@@ -620,7 +635,7 @@ class Agent:
                         break
 
         else:
-
+            G_filtered = filter_graph_by_max_link_length(G, 50,start_node,self.nogos)
             for neighbor in G_filtered.neighbors(start_node):
                 
                 if G_filtered.nodes[neighbor].get('has_conflict', False):

@@ -815,6 +815,7 @@ start_time = time.time()
 
 total_population = total_pop(cities)+28079
 
+
 #########################################################################################
 frac = 300 # TO VARY
 #########################################################################################
@@ -945,7 +946,32 @@ days = 0
 
 fin_sim_t=time.time()
 
+#########################################################################################################
+
+# No groups
+"""
+for id in Agents:
+    Agents[id].group=[Agents[id]]
+    Agents[id].instratgroup=False
+    Agents[id].infamily=False
+    Agents[id].ingroup=False
+    Agents[id].is_leader=True
+    Agents[id].speed= Agents[id].origspeed
+    if Agents[id].capitalbracket!= Agents[id].origcapitalbracket:
+        Agents[id].speed = abs(np.random.normal(200,50))
+    Agents[id].capitalbracket = Agents[id].origcapitalbracket
+"""
+#########################################################################################################
+
+
+
+
+
 print("Total set up finished in: "+ str(fin_sim_t-start_time) + "\n")
+
+
+
+
 
 print("Starting simulation...")
 
@@ -1033,7 +1059,7 @@ for current_date in dates:
 
     for id in Agents:
                    
-        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date)
+        Agents[id].assess_situation_and_move_if_needed(G,loc_dic[Agents[id].location],current_date,roulette=True)
                 
         if Agents[id].status != 'Dead' and Agents[id].is_leader and Agents[id].location != 'Abroad':
             Agents[id].indirect_check(G,loc_dic[Agents[id].location].name,current_date)
@@ -1103,10 +1129,12 @@ for current_date in dates:
                             print(agent.location)
                             pass
             
+            # REMOVE FOR NO COMMUNICATION
+            """
             if Agents[id].is_leader:
                 if not Agents[id].merged:
                     Agents[id].merge_nogo_lists(ags) # allows nogo lists to be unionised
-            
+            """
 
             if Agents[id].instratgroup:
                 if Agents[id].moving:
@@ -1169,8 +1197,7 @@ for current_date in dates:
             Agents[agent].location='Mbera'
 
     for camp in camps:
-        pop=camp.population*frac
-        populations[camp.name].append(pop)
+        populations[camp.name].append(frac*len(camp.members))
 
     statuses['Refugee'].append(refugees)
     statuses['Returnee'].append(returnees)
@@ -1237,7 +1264,7 @@ for i in range(0, n_camps, camps_per_figure):
     plt.tight_layout()
     plt.show()
 
-csv_file = 'Camp_splits.csv'
+csv_file = 'Camp_splits_w0_roulette.csv'
 
 populations['Date']=dates
 statuses['Date']=dates
@@ -1261,7 +1288,7 @@ for camp in camps:
 
 draw_graph(G, current_date, distances_on=False)
 
-csv_file2= 'Status_splits.csv'
+csv_file2= 'Status_splits_w0_roulette.csv'
 
 with open(csv_file2, 'w', newline='') as file:
     writer = csv.DictWriter(file, fieldnames=statuses.keys())
@@ -1274,7 +1301,7 @@ with open(csv_file2, 'w', newline='') as file:
         row = {key: statuses[key][i] for key in statuses.keys()}
         writer.writerow(row)
 
-csv_file3= 'Country_split_refugees.csv'
+csv_file3= 'Country_split_refugees_w0_roulette.csv'
 
 with open(csv_file3, 'w', newline='') as file:
     writer = csv.DictWriter(file, fieldnames=countries.keys())
