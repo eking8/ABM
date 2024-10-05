@@ -11,6 +11,9 @@ import sys
 
 class Agent:
     # Age groups and their population
+    """
+    This is Mali specific, if you can find information on population distribution input here.
+    """
     age_groups = [(90, 100), (80, 89), (70, 79), (60, 69), (50, 59), (40, 49), (30, 39), (20, 29), (10, 19), (0, 9)]
     populations = [21510, 88052, 289198, 632542, 984684, 1569836, 2451989, 3466640, 5240091, 7650947]
     lam = 0.225
@@ -66,7 +69,7 @@ class Agent:
         self.status = status
         self.longterm = None  # Intended destination
         self.moving = False  # Is the agent currently moving to a destination
-        self.threshold = np.random.uniform(0,20) 
+        self.threshold = np.random.uniform(0,25) 
         rand_n= np.random.uniform(0,1)
         self.startdate=None
         self.enddate=None
@@ -106,7 +109,7 @@ class Agent:
         self.contacts_in_camp={}
         self.tellsfam=0.06<=rand_n2<=0.56 # 50% get info from fam
         
-
+        """Wealth data is Mali specific. Please replace."""
         if rand_n>0.9965: # capital 100000
             self.capitalbracket = 'Rich'
             self.origcapitalbracket=self.capitalbracket
@@ -127,12 +130,10 @@ class Agent:
     
     def form_families(self,all_agents):     
 
-
         if not self.in_family and not self.checked:
 
             if 16<=self.age<=65:
                 
-
                 self.in_family=True
                 
                 local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id]
@@ -323,6 +324,7 @@ class Agent:
     
     @staticmethod
     def generate_gender():
+        """"This is Mali specific as well. Please replace with demographic data of your case."""
         probabilities = [0.503, 0.497]
         choices = ['M', 'F']
         return random.choices(choices, weights=probabilities, k=1)[0]
@@ -404,7 +406,8 @@ class Agent:
 
                 rest_prob = 1-math.exp(-(self.distance_traveled_since_rest+100)*cooldown/3300) 
                 # at 14 days after conflict, 200km walked, and 10 people stopping should be 1/3 chance of moving
-
+                
+                """Additional Fassala logic here, please change to any camp which closes."""
                 if random.random()>rest_prob or (city.name=='Fassala' and current_date >= pd.Timestamp(datetime(2012, 3, 19).date())):
 
                     self.moved_today=True
@@ -457,21 +460,14 @@ class Agent:
                         iscamp=True
 
                     if destination_dict:
-                        if roulette:
-                            key = self.roulette_select(G,city.name,destination_dict,iscamp)
-                            if key:
+                    
+                        key = self.roulette_select(G,city.name,destination_dict,iscamp,roulette)
+                        if key:
                                 for agent in self.group:
                                     agent.distanceleft = destination_dict[key]['distance']
                                     agent.longterm = key
                                     agent.shortterm = destination_dict[key]['path'][0]
-                        else:
-                            key = min(destination_dict, key=lambda k: destination_dict[k]['distance'])
-                            if key:
-                                for agent in self.group:
-                                    if key!=self.location:
-                                        agent.distanceleft = destination_dict[key]['distance']
-                                        agent.longterm = key
-                                        agent.shortterm = destination_dict[key]['path'][0]
+                        
 
 
                         
@@ -533,7 +529,7 @@ class Agent:
             agent.familiar=self.familiar
                 
 
-    def roulette_select(self, G, startnode, distances, iscamp):
+    def roulette_select(self, G, startnode, distances, iscamp, roulette):
         """
         Select a key from the distances dictionary using roulette method,
         where scores are computed as `familiar - a * distance + b - c * population + d * cos(current direction - new direction) - e*fatalities
@@ -559,15 +555,16 @@ class Agent:
             print('No routes')
             return None
 
-        # Define constants and parameters
-        a = self.age / 30000
-        b = 100  # Constant bias
-        c = 1/5000 if iscamp else 0
-        d = 10  # Cosine multiplication factor
-        e = 0.01
-        f = 0.01
-        g = 1
-        h=0.5
+        """Define constants and parameters"""
+        
+        a = self.age / 3000
+        b = 150  # Constant bias
+        c = 1/1000 if iscamp else 0
+        d = 10 # Cosine multiplication factor
+        e = 1
+        f = 1
+        g = 0.01
+        h=1
 
         scores = {}
         total_score_sum = 0
@@ -597,6 +594,10 @@ class Agent:
             if score > 0:
                 scores[key] = score
                 total_score_sum += score
+        
+        if not roulette:
+            Keymax = max(zip(scores.values(), scores.keys()))[1]
+            return Keymax
 
         if total_score_sum == 0:
             return None
@@ -615,7 +616,6 @@ class Agent:
     
     def indirect_check(self, G, start_node,current_date):
 
-        
         
         if G[start_node].get('is_camp',False) and (current_date<pd.Timestamp(datetime(2012, 3, 19)) or start_node!='Mbera'):
             

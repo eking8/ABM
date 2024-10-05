@@ -1,5 +1,4 @@
 # Colours for printed text
-
 class colors:
     RED = '\033[91m'
     GREEN = '\033[92m'
@@ -10,7 +9,7 @@ class colors:
     WHITE = '\033[97m'
     END = '\033[0m'
 
-#@profile
+# Progress bar for simulation
 def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
     """
     Call in a loop to create terminal progress bar

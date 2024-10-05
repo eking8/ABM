@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import math
 
-#@profile
+# Initialise graph
 def create_graph(locations):
 
     """
@@ -13,7 +13,8 @@ def create_graph(locations):
     - locations (list)
 
     """
-    # print("Initialising graph...")
+    
+    print("Initialising graph...")
 
     G = nx.Graph()
 
@@ -29,17 +30,18 @@ def create_graph(locations):
             bearing = calculate_bearing(loc.latitude, loc.longitude, conn['location'].latitude, conn['location'].longitude)
             G.add_edge(loc.name, conn['location'].name, weight=round(conn['distance'], 3), crosses_border=conn['crosses_border'], bearing=bearing, travelled=0)
 
-    # print("Graph initialised.")
+    print("Graph initialised.")
     
     return G
     
     
-#@profile
+# Produce schematic of noded graph
 def draw_graph(G, current_date, distances_on=False):
     
     """
     
-    This function builds on graph and draws a current state of the conflict zones
+    This function builds on graph and draws a current state of the conflict zones. 
+    Useful for identifying bottlenecks and visualising graph logic but not necessary for complete simulatiom.
     
     iparameters:
     - G (networkx.Graph)
@@ -47,7 +49,7 @@ def draw_graph(G, current_date, distances_on=False):
     
     """
 
-    # print(f"Drawing network as of {current_date}...")
+    print(f"Drawing network as of {current_date}...")
     pos = nx.get_node_attributes(G, 'pos')
     plt.figure(figsize=(15, 10))
     
@@ -88,12 +90,13 @@ def draw_graph(G, current_date, distances_on=False):
     plt.title(f"Network of Cities, Camps, and Airports as of {current_date}")
     plt.axis('on')
     plt.show()
-    # print("Network visualization completed.")
+    
 
-#@profile
+# Find accessible nodes for an agent in the network
 def find_accessible_nodes_within_distance(G, start_node, max_distance_km):
     """
     Finds all nodes within a specified distance of a start node in a graph.
+    Useful as a diagnostic tool but not necessary for complete simulation.
     
     Parameters:
     - G (networkx.Graph): The graph representing the network.
@@ -131,10 +134,12 @@ def find_accessible_nodes_within_distance(G, start_node, max_distance_km):
     
     return accessible_nodes
 
-#@profile
+# Find bearing
 def calculate_bearing(start_lat, start_lon, end_lat, end_lon):
     """
     Calculates the bearing between two points in radians.
+    Useful for direction logic in agents.
+    
     The formula used is the following:
     θ = atan2(sin(Δlong) * cos(lat2),
               cos(lat1) * sin(lat2) − sin(lat1) * cos(lat2) * cos(Δlong))
