@@ -8,6 +8,10 @@ from datetime import timedelta
 import pandas as pd
 import sys
 
+SEED = 42
+
+random.seed(SEED)
+np.random.seed(SEED)
 
 class Agent:
     # Age groups and their population
@@ -484,7 +488,7 @@ class Agent:
 
         elif self.is_stuck or (self.location=="Fassala" and current_date>pd.Timestamp(datetime(2012, 3, 19))):
             if city:
-                G_filtered = filter_graph_by_max_link_length(G, self.speed,city,nogo=self.nogos)
+                G_filtered = filter_graph_by_max_link_length(G, self.speed,city.name,nogo=self.nogos)
                 if set(G_filtered.neighbors(city.name)).issubset(self.nogos):
                     for neighbor in G_filtered.neighbors(city.name):
                         self.nogos.remove(neighbor)
@@ -493,7 +497,9 @@ class Agent:
         """
         This method allows an agent to merge their 'nogos' set with those of 0-3 other agents in the same city.
         :param all_agents: List of all Agent instances
+
         """
+        
         # Filter agents in the same city and not the same agent
         local_agents = [agent for agent in all_agents if agent.location == self.location and agent.id != self.id and not agent.merged and agent not in self.group and agent.status!='Dead' and agent.is_leader]
 
@@ -505,6 +511,7 @@ class Agent:
             self.merged=True
 
         # Merge the nogo lists
+        
         for agent in selected_agents:
 
             if agent.media and self.media:
@@ -522,7 +529,7 @@ class Agent:
             for agent2 in agent.group:
                 agent2.nogos=agent.nogos
                 agent2.familiar=agent.familiar
-
+        
 
         for agent in self.group:
             agent.nogos=self.nogos
@@ -582,14 +589,16 @@ class Agent:
             cosine_of_bearing = math.cos(bearing_difference / 2)
 
             # Calculate the score using the given formula
-            score = (h*self.familiar.get(key, 0)
+            score = (
+                    h*self.familiar.get(key, 0)
                     - a * value['distance']
                     + b
                     - c * value.get('population', 0)
                     + d * cosine_of_bearing
                     - e * G.nodes[key].get('fatalities', 0)
                     + f * value.get('travelled', 0)
-                    + g * self.contacts_in_camp.get(key, 0))
+                    + g * self.contacts_in_camp.get(key, 0)
+                    )
 
             if score > 0:
                 scores[key] = score
@@ -904,23 +913,24 @@ def find_shortest_paths_to_neighboring_countries(G, start_node, max_link_length,
 
     return results
 
-def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo= []):
-    # Step 1: Create a new empty graph to hold the filtered graph
+def filter_graph_by_max_link_length(G, max_link_length, start_node, nogo=[]):
     G_filtered = nx.Graph()
 
-    
-    # Step 2: Copy all nodes from G to G_filtered, preserving attributes
+    # 1. Copy all nodes with attributes
     for node, data in G.nodes(data=True):
         G_filtered.add_node(node, **data)
-            
-    if start_node not in G_filtered:
-        G_filtered.add_node(start_node)
-    
-    # Step 3: Filter edges by max_link_length and add them to G_filtered
+
+    # 2. Remove nogo nodes BUT NEVER remove start node
+    for node in list(nogo):
+        if node != start_node and G_filtered.has_node(node):
+            G_filtered.remove_node(node)
+
+    # 3. Add edges under constraint
     for u, v, d in G.edges(data=True):
         if d.get('weight', float('inf')) <= max_link_length:
-            G_filtered.add_edge(u, v, **d)
-    
+            if G_filtered.has_node(u) and G_filtered.has_node(v):
+                G_filtered.add_edge(u, v, **d)
+
     return G_filtered
 
 def deathmech(members,fat):

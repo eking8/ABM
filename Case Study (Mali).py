@@ -28,6 +28,14 @@ from Visualisations import colors, print_progress_bar
 from datetime import datetime, timedelta
 import sys
 
+import random
+
+SEED = 42
+
+random.seed(SEED)
+np.random.seed(SEED)
+
+grouping=True
 """ 
 
 Population Data
@@ -703,6 +711,25 @@ def try_to_create_agent(i, birth_rate, loc_dic, Agents):
                 return True  # Successfully created an agent
     return False  # Failed to create an agent after all attempts
 
+def resolve_location(name, loc_dic):
+    if name in loc_dic:
+        return loc_dic[name]
+
+    # normalise simple cases
+    clean_name = name.strip()
+
+    if clean_name in loc_dic:
+        return loc_dic[clean_name]
+
+    # fallback strategies
+    # 1. case-insensitive match
+    for k in loc_dic:
+        if k.lower() == clean_name.lower():
+            return loc_dic[k]
+
+    # 2. return None 
+    return None
+
 def update_location_and_groups(i, loc_dic, Agents, total_agents, ags):
     if i in Agents:
         Agents[i].in_family = True
@@ -717,7 +744,7 @@ Adjust time frame based on your case instance.
 
 """
 # Calculate the number of days in 2012
-start_date = pd.to_datetime('2012-01-01')
+start_date = pd.to_datetime('2012-01-01 ')
 end_date = pd.to_datetime('2013-01-01')
 dates = pd.date_range(start_date, end_date)
 
@@ -737,7 +764,7 @@ df1['event_date'] = pd.to_datetime(df1['event_date'], format="%d %B %Y")
 
 df2 = pd.read_csv("for_con.csv") # Foreign conflicts included in foreign nodes
 
-df2['event_date'] = pd.to_datetime(df2['event_date'], format="%d-%b-%y")
+df2['event_date'] = pd.to_datetime(df2['event_date'], format='mixed', dayfirst=True, errors='coerce')
 
 conflicts = pd.concat([df1, df2], ignore_index=True)
 
@@ -874,7 +901,7 @@ on the benefits of lower and higher frac values.
 """
 
 #########################################################################################
-frac = 300 # TO VARY
+frac = 100 # TO VARY
 #########################################################################################
 
 """
@@ -924,73 +951,76 @@ agent_t2=time.time()
 print("\n \n")
 print("...finished in: "+ str(agent_t2-agent_t1) + "\n")
 
+if grouping:
+    print("Forming families... \n")
+    o=0
+    fam_t1=time.time()
+    for agent in ags:
+        agent.form_families(ags)
+        o+=1
+        print(f'\rProgress: {o} Agents', end='', flush=True)
+    print("\n \n")
+    fam_t2=time.time()
 
-print("Forming families... \n")
-o=0
-fam_t1=time.time()
-for agent in ags:
-    agent.form_families(ags)
-    o+=1
-    print(f'\rProgress: {o} Agents', end='', flush=True)
-print("\n \n")
-fam_t2=time.time()
+    print("...finished in: "+ str(fam_t2-fam_t1) + "\n")
+    print("Joining dependents to families... \n")
+    o=0
+    depen_t1=time.time()
+    for agent in ags:
+        agent.join_dependents(ags)
+        o+=1
+        print(f'\rProgress: {o} Agents', end='', flush=True)
 
-print("...finished in: "+ str(fam_t2-fam_t1) + "\n")
-print("Joining dependents to families... \n")
-o=0
-depen_t1=time.time()
-for agent in ags:
-    agent.join_dependents(ags)
-    o+=1
-    print(f'\rProgress: {o} Agents', end='', flush=True)
+    print("\n \n")
+    depen_t2=time.time()
 
-print("\n \n")
-depen_t2=time.time()
+    print("...finished in: "+ str(depen_t2-depen_t1) + "\n")
 
-print("...finished in: "+ str(depen_t2-depen_t1) + "\n")
+    print("Forming family groups... \n")
+    o=0
+    fam_groups_t1=time.time()
+    for agent in ags: # must initialise new for loop to ensure all families initialised
+        agent.form_fam_group()
+        o+=1
+        print(f'\rProgress: {o} Agents', end='', flush=True)
+    fam_groups_t2=time.time()
+    print("\n \n")
+    print("...finished in: "+ str(fam_groups_t2-fam_groups_t1) + "\n")
 
-print("Forming family groups... \n")
-o=0
-fam_groups_t1=time.time()
-for agent in ags: # must initialise new for loop to ensure all families initialised
-    agent.form_fam_group()
-    o+=1
-    print(f'\rProgress: {o} Agents', end='', flush=True)
-fam_groups_t2=time.time()
-print("\n \n")
-print("...finished in: "+ str(fam_groups_t2-fam_groups_t1) + "\n")
+    print("Forming strategic groups... \n")
+    o=0
+    strat_groups_t1=time.time()
+    for loc in locations:
+        loc.form_strat_group(Agents)
+        o+=1
+        print(f'\rProgress: {o} Locations', end='', flush=True)
+    strat_groups_t2=time.time()
+    print("\n \n")
+    print("...finished in: "+ str(strat_groups_t2-strat_groups_t1) + "\n")
 
-print("Forming strategic groups... \n")
-o=0
-strat_groups_t1=time.time()
-for loc in locations:
-    loc.form_strat_group(Agents)
-    o+=1
-    print(f'\rProgress: {o} Locations', end='', flush=True)
-strat_groups_t2=time.time()
-print("\n \n")
-print("...finished in: "+ str(strat_groups_t2-strat_groups_t1) + "\n")
-
-print("Finish defining groups... \n")
+    print("Finish defining groups... \n")
 
 
-def_groups_t1=time.time()
+    def_groups_t1=time.time()
 
-for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
-    agent.define_groups(ags)
+    for agent in ags: # must initialise new for loop to ensure all proabilities of travelling with fam are initialised
+        agent.define_groups(ags)
 
-def_groups_t2=time.time()
+    def_groups_t2=time.time()
 
-print("...finished in: "+ str(def_groups_t2-def_groups_t1) + "\n")
+    print("...finished in: "+ str(def_groups_t2-def_groups_t1) + "\n")
 
-print("Speed and captial normalisation... \n")
+    print("Speed and captial normalisation... \n")
 
-speeds_t1=time.time()
-for agent in ags: # must initialise new group to ensure all family travelling groups initialised
-    agent.group_speeds_and_cap()
-speeds_t2=time.time()
+    speeds_t1=time.time()
+    for agent in ags: # must initialise new group to ensure all family travelling groups initialised
+        agent.group_speeds_and_cap()
+    speeds_t2=time.time()
 
-print("...finished in: "+ str(speeds_t2-speeds_t1) + "\n")
+    print("...finished in: "+ str(speeds_t2-speeds_t1) + "\n")
+else: 
+    for id in Agents:
+        Agents[id].is_leader=True
 
 if (45.92*n_agents)>(365*1000):
     birth_rate = round((45.92*n_agents)/(365*1000))
@@ -1067,7 +1097,10 @@ for current_date in dates:
     
     for idx, event in conflicts[conflicts['event_date'] == current_date].iterrows(): # consider all conflicts in given day
 
-        location = loc_dic[event['location']]
+        location = resolve_location(event['location'], loc_dic)
+
+        if location is None:
+            continue 
 
         fat = event['fatalities']
         

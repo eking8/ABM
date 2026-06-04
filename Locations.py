@@ -6,6 +6,10 @@ import math
 import sys
 import random
 
+SEED = 42
+
+random.seed(SEED)
+
 
 # store as cache to improve speed on repeated use...
 

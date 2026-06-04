@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import math
 
+
+
 # Initialise graph
 def create_graph(locations):
 
