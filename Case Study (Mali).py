@@ -744,7 +744,7 @@ Adjust time frame based on your case instance.
 
 """
 # Calculate the number of days in 2012
-start_date = pd.to_datetime('2012-01-01 ')
+start_date = pd.to_datetime('2012-01-01')
 end_date = pd.to_datetime('2013-01-01')
 dates = pd.date_range(start_date, end_date)
 
@@ -1135,6 +1135,12 @@ for current_date in dates:
     Senegals = 0
     Malis = 0
     Others = 0
+
+    for id in Agents:
+        agent = Agents[id]
+
+        if agent.is_leader and agent.status != "Dead":
+            agent.merge_nogo_lists(ags)
 
     for id in Agents:
                    

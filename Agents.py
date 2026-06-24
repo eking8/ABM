@@ -23,12 +23,13 @@ class Agent:
     lam = 0.225
 
     probabilities = []
+    
     cumulative_distribution = []
 
 
     @classmethod
     def initialise_populations(cls,locations,total_population):
-
+        
         cls.city_probabilities = {location.name: location.population/ total_population for location in locations}
         prob_values = list(cls.city_probabilities.values())
 
@@ -534,6 +535,8 @@ class Agent:
         for agent in self.group:
             agent.nogos=self.nogos
             agent.familiar=self.familiar
+
+            
                 
 
     def roulette_select(self, G, startnode, distances, iscamp, roulette):
@@ -605,6 +608,8 @@ class Agent:
                 total_score_sum += score
         
         if not roulette:
+            if not scores:
+                return None
             Keymax = max(zip(scores.values(), scores.keys()))[1]
             return Keymax
 
