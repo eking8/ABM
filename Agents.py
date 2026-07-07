@@ -26,6 +26,8 @@ class Agent:
     
     cumulative_distribution = []
 
+    foreign_cities=[]
+
 
     @classmethod
     def initialise_populations(cls,locations,total_population):
