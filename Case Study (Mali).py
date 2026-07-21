@@ -204,26 +204,25 @@ def load_checkpoint(filename, Agent):
     }
 
 def load_latest_checkpoint(checkpoint_dir="checkpoints"):
-
     even_path = os.path.join(checkpoint_dir, "checkpoint_even.pkl")
     odd_path = os.path.join(checkpoint_dir, "checkpoint_odd.pkl")
-    
-    newest_path = None
-    
-    if os.path.exists(even_path) and os.path.exists(odd_path):
-        newest_path = even_path if os.path.getmtime(even_path) > os.path.getmtime(odd_path) else odd_path
-    
-    elif os.path.exists(even_path):
-        newest_path = even_path
-    elif os.path.exists(odd_path):
-        newest_path = odd_path
 
-    if newest_path:
-        print(f"Loading checkpoint from {newest_path}...")
-        return newest_path
-    else:
-        print("No checkpoints found. Starting from scratch.")
-        return None
+    # Order by most recently modified first, so we try the newest save first
+    candidates = [p for p in (even_path, odd_path) if os.path.exists(p)]
+    candidates.sort(key=os.path.getmtime, reverse=True)
+
+    for path in candidates:
+        try:
+            with open(path, 'rb') as f:
+                pickle.load(f)  # just test that it reads cleanly
+            print(f"Loading checkpoint from {path}...")
+            return path
+        except (EOFError, pickle.UnpicklingError) as e:
+            print(f"Checkpoint {path} appears corrupted ({e}), trying next...")
+            continue
+
+    print("No valid checkpoints found. Starting from scratch.")
+    return None
 
 checkpoint = load_latest_checkpoint()
 if checkpoint:
